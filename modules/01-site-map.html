@@ -283,8 +283,8 @@ function initMap() {
   // ── DEM greyscale hillshade basemap ──────────────────────────────────────
   // Primary: NASA Trek WMTS — MOLA greyscale shaded relief (clean, no colour noise)
   const molaColorLayer = L.tileLayer(
-    'https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_Shade_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg',
-    { tms:false, attribution:'NASA/USGS MOLA', errorTileUrl:'', opacity:1.0, minZoom:0, maxZoom:6 }
+    '../tiles/dem/{z}/{x}/{y}.png',
+    { tms:true, attribution:'NASA/USGS MOLA', errorTileUrl:'', opacity:1.0, minZoom:0, maxZoom:5 }
   );
 
   // Canvas fallback — greyscale DEM with a subtle rust tint so it reads as Mars
