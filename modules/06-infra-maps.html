@@ -411,6 +411,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 //# sourceMappingURL=leaflet.js.map
 
 // ── Elevation model ────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+
 function dist(a,b,c,d){return Math.sqrt((a-c)**2+(b-d)**2)}
 function marsElev(lat,lon){
   let e=lat>0?-0.25:0.15;
@@ -420,18 +422,16 @@ function marsElev(lat,lon){
   if(lat>-15&&lat<-3&&lon>-100&&lon<-30){const v=Math.sin((lon+100)/70*Math.PI)*Math.cos((lat+9)/6*Math.PI);e-=0.45*Math.max(0,v);}
   if(lat>5&&lat<35&&lon>-20&&lon<60) e+=0.15*Math.exp(-(lat-20)**2/200-(lon-20)**2/800);
   const dE=dist(lat,lon,25,147); if(dE<20) e+=0.45*Math.exp(-dE*dE/200);
-  // Tharsis detail
   const dAs=dist(lat,lon,11.9,-104.7); if(dAs<5) e+=0.4*Math.exp(-dAs*dAs/12);
   const dPv=dist(lat,lon,1.9,-112.8); if(dPv<5) e+=0.35*Math.exp(-dPv*dPv/12);
   const dAr=dist(lat,lon,-8.9,-120); if(dAr<6) e+=0.38*Math.exp(-dAr*dAr/15);
-  // Nili Fossae graben
   if(lat>18&&lat<24&&lon>70&&lon<80){const g=Math.max(0,1-dist(lat,lon,21,74)/4);e-=0.15*g;}
   return Math.max(-1,Math.min(1,e));
 }
 function tileToLat(y,z){return Math.atan(Math.sinh(Math.PI*(1-2*y/Math.pow(2,z))))*180/Math.PI}
 
 function addDem(map){
-  const g=L.gridLayer({tileSize:256,pane:'tilePane'});
+  const g=L.gridLayer({tileSize:256});
   g.createTile=function(c){
     const cv=document.createElement('canvas');cv.width=cv.height=256;
     const ctx=cv.getContext('2d');
@@ -464,62 +464,38 @@ const mapTH = L.map('map-th',{
 L.control.zoom({position:'bottomright'}).addTo(mapTH);
 addDem(mapTH);
 
-// Geological overlays - Tharsis
-// Tharsis dome boundary
 L.circle([2,-105],{radius:800000,color:'#E87040',weight:1,fillColor:'#E87040',fillOpacity:0.04,dashArray:'6 4'}).addTo(mapTH);
-// Valles Marineris
 L.polyline([[-8,-80],[-10,-60],[-12,-40]],{color:'#8A70D4',weight:2,dashArray:'5 3',opacity:0.7})
   .bindPopup(tip('<b style="color:#8A70D4">Valles Marineris rift</b><br>Extensional fault system<br>Risk: radial faults may compromise dome seal')).addTo(mapTH);
-// Cryosphere zone
 L.circle([2,-105],{radius:400000,color:'#1A3A5C',weight:1,fillColor:'#1A5080',fillOpacity:0.06,dashArray:'4 4'}).addTo(mapTH);
 
-// Volcanoes
 [
   {lat:18.4,lng:-133.1,n:'Olympus Mons',sub:'21 km tall · Largest volcano in solar system · Peak geothermal flux'},
   {lat:11.9,lng:-104.7,n:'Ascraeus Mons',sub:'18 km · Northern Tharsis Montes · Heat source'},
   {lat:1.9,lng:-112.8,n:'Pavonis Mons',sub:'14 km · Central Tharsis · Dome apex'},
   {lat:-8.9,lng:-120,n:'Arsia Mons',sub:'17 km · Southern Tharsis · Gas migration corridor'},
 ].forEach(v=>{
-  L.circleMarker([v.lat,v.lng],{radius:8,color:'#E87040',fillColor:'#E87040',fillOpacity:0.7,weight:1.5,pane:'markerPane'})
+  L.circleMarker([v.lat,v.lng],{radius:8,color:'#E87040',fillColor:'#E87040',fillOpacity:0.7,weight:1.5})
     .bindPopup(tip(`<b style="color:#E87040">${v.n}</b><br><span style="color:#556070">${v.sub}</span>`)).addTo(mapTH);
 });
 
-// Infrastructure markers - Tharsis
-const infraTH = [
-  {lat:2.5,lng:-108,type:'drill1',label:'Phase 1 Drill Pad',color:'#E87040',icon:'⬡',
-   spec:'Depth: 4–8 km · Rig: Rotary 8km-rated · Power: RTG 25kW · Timeline: Yr 5–7'},
-  {lat:1.0,lng:-110,type:'drill2',label:'Phase 2 Deep Well',color:'#E0A030',icon:'⬡',
-   spec:'Depth: 20–26 km · Rig: Heavy autonomous · Temp rated: >400°C · Timeline: Yr 7–9'},
-  {lat:3.5,lng:-107,type:'rtg',label:'RTG Power Station #1',color:'#3DBFA0',icon:'⚡',
-   spec:'2× MMRTG · 220W continuous · Dust-storm immune · Lifetime: 14 yrs'},
-  {lat:0.5,lng:-107.5,type:'rtg',label:'RTG Power Station #2',color:'#3DBFA0',icon:'⚡',
-   spec:'2× MMRTG · 220W continuous · Powers drill rig #2'},
-  {lat:2,lng:-104,type:'comms',label:'Comms Relay Node',color:'#4A9FD4',icon:'📡',
-   spec:'UHF/X-band · MRO + MAVEN relay · 2hr comms window per sol'},
-  {lat:3,lng:-109,type:'proc',label:'Processing Unit',color:'#5DB870',icon:'🔬',
-   spec:'CH₄ separator + liquefaction · ISRU output: 12–18 t CH₄/yr · LOX production'},
-  {lat:-2,lng:-112,type:'seismic',label:'Seismic Array Node',color:'#8A70D4',icon:'📊',
-   spec:'Geophone node 1/48 · 30km depth survey · Maps dome trap geometry'},
-  {lat:5,lng:-103,type:'seismic',label:'Seismic Array Node',color:'#8A70D4',icon:'📊',
-   spec:'Geophone node 2/48 · Northern array anchor'},
-  {lat:4,lng:-115,type:'atm',label:'Atmospheric Monitor',color:'#E0A030',icon:'🌡',
-   spec:'CH₄ sniffer + dust/temp · Storm warning system · ppb sensitivity'},
-];
-
-const iconColors={drill1:'#E87040',drill2:'#E0A030',rtg:'#3DBFA0',comms:'#4A9FD4',proc:'#5DB870',seismic:'#8A70D4',atm:'#E0A030'};
-infraTH.forEach(m=>{
+[
+  {lat:2.5,lng:-108,label:'Phase 1 Drill Pad',color:'#E87040',icon:'⬡',spec:'Depth: 4–8 km · Rig: Rotary 8km-rated · Power: RTG 25kW · Timeline: Yr 5–7'},
+  {lat:1.0,lng:-110,label:'Phase 2 Deep Well',color:'#E0A030',icon:'⬡',spec:'Depth: 20–26 km · Rig: Heavy autonomous · Temp rated: >400°C · Timeline: Yr 7–9'},
+  {lat:3.5,lng:-107,label:'RTG Power Station #1',color:'#3DBFA0',icon:'⚡',spec:'2× MMRTG · 220W continuous · Dust-storm immune · Lifetime: 14 yrs'},
+  {lat:0.5,lng:-107.5,label:'RTG Power Station #2',color:'#3DBFA0',icon:'⚡',spec:'2× MMRTG · 220W continuous · Powers drill rig #2'},
+  {lat:2,lng:-104,label:'Comms Relay Node',color:'#4A9FD4',icon:'📡',spec:'UHF/X-band · MRO + MAVEN relay · 2hr comms window per sol'},
+  {lat:3,lng:-109,label:'Processing Unit',color:'#5DB870',icon:'🔬',spec:'CH₄ separator + liquefaction · ISRU output: 12–18 t CH₄/yr · LOX production'},
+  {lat:-2,lng:-112,label:'Seismic Node',color:'#8A70D4',icon:'📊',spec:'Geophone node 1/48 · 30km depth survey · Maps dome trap geometry'},
+  {lat:5,lng:-103,label:'Seismic Node',color:'#8A70D4',icon:'📊',spec:'Geophone node 2/48 · Northern array anchor'},
+  {lat:4,lng:-115,label:'Atmospheric Monitor',color:'#E0A030',icon:'🌡',spec:'CH₄ sniffer + dust/temp · Storm warning system · ppb sensitivity'},
+].forEach(m=>{
   L.marker([m.lat,m.lng],{icon:L.divIcon({
     html:`<div style="width:28px;height:28px;border-radius:50%;background:rgba(10,13,18,0.9);border:2px solid ${m.color};display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;box-shadow:0 0 8px ${m.color}44">${m.icon}</div>`,
     iconSize:[28,28],iconAnchor:[14,14],className:''
-  }),pane:'markerPane'})
-    .bindPopup(`<div class="m-tip"><b style="color:${m.color}">${m.label}</b><br><span style="color:#556070;font-size:10px">${m.spec}</span></div>`)
-    .addTo(mapTH);
+  })}).bindPopup(`<div class="m-tip"><b style="color:${m.color}">${m.label}</b><br><span style="color:#556070;font-size:10px">${m.spec}</span></div>`).addTo(mapTH);
 });
-
-// Seismic network lines
-L.polyline([[3.5,-107],[2.5,-108],[1.0,-110],[0.5,-107.5],[-2,-112],[5,-103],[4,-115],[3.5,-107]],
-  {color:'#8A70D4',weight:0.8,dashArray:'3 3',opacity:0.4}).addTo(mapTH);
-
+L.polyline([[3.5,-107],[2.5,-108],[1.0,-110],[0.5,-107.5],[-2,-112],[5,-103],[4,-115],[3.5,-107]],{color:'#8A70D4',weight:0.8,dashArray:'3 3',opacity:0.4}).addTo(mapTH);
 mapTH.on('mousemove',e=>{
   const la=e.latlng.lat.toFixed(2),lo=e.latlng.lng.toFixed(2);
   document.getElementById('coord-disp').textContent=`CURSOR: ${la>0?la+'°N':Math.abs(la)+'°S'}, ${lo>0?lo+'°E':Math.abs(lo)+'°W'}`;
@@ -533,78 +509,60 @@ const mapNI = L.map('map-ni',{
 L.control.zoom({position:'bottomright'}).addTo(mapNI);
 addDem(mapNI);
 
-// Graben outline
 L.polyline([[22,71],[20.5,73],[19.5,76],[20,79]],{color:'#8A70D4',weight:2,dashArray:'5 3',opacity:0.8})
-  .bindPopup(tip('<b style="color:#8A70D4">Nili Fossae graben</b><br>Extensional fault system<br>Exposes ancient crust with serpentinite deposit')).addTo(mapNI);
+  .bindPopup(tip('<b style="color:#8A70D4">Nili Fossae graben</b><br>Extensional fault system<br>Exposes ancient crust with serpentinite')).addTo(mapNI);
 L.polyline([[22,73],[21,75],[20,77.5]],{color:'#8A70D4',weight:1.5,dashArray:'4 3',opacity:0.6}).addTo(mapNI);
+L.circle([12,87],{radius:900000,color:'#4A9FD4',weight:0.8,fillColor:'#4A9FD4',fillOpacity:0.04,dashArray:'6 4'})
+  .bindPopup(tip('<b style="color:#4A9FD4">Isidis basin</b><br>Ancient sedimentary fill<br>Secondary carbon deposit potential')).addTo(mapNI);
 
-// Mineral zones
 [
-  {lat:21.2,lng:73.8,m:'Serpentinite',c:'#FF2200',r:18,sub:'2.32μm Mg-OH CRISM confirmed · Critical H₂ source · DIRECT evidence'},
-  {lat:20.6,lng:74.4,m:'Magnesite',c:'#FF8800',r:14,sub:'2.30–2.35μm CO₃ · CO₂ feedstock confirmed · DIRECT'},
+  {lat:21.2,lng:73.8,m:'Serpentinite',c:'#FF2200',r:18,sub:'2.32μm Mg-OH CRISM confirmed · Critical H₂ source'},
+  {lat:20.6,lng:74.4,m:'Magnesite',c:'#FF8800',r:14,sub:'2.30–2.35μm CO₃ · CO₂ feedstock confirmed'},
   {lat:20.0,lng:73.2,m:'Carbonate',c:'#FF9900',r:14,sub:'CO₃ absorption · Aqueous CO₂ mineralisation'},
   {lat:21.8,lng:75.0,m:'Olivine',c:'#FFCC00',r:12,sub:'1.0μm Fe²⁺ · Serpentinisation precursor'},
   {lat:20.8,lng:72.8,m:'Serpentinite',c:'#FF2200',r:15,sub:'2.32μm Mg-OH confirmed · Secondary outcrop'},
   {lat:22.1,lng:73.5,m:'Carbonate',c:'#FF9900',r:11,sub:'CO₃ absorption · Northern deposit'},
 ].forEach(p=>{
   L.circleMarker([p.lat,p.lng],{radius:p.r+6,color:p.c,fillColor:p.c,fillOpacity:0.06,weight:0.5}).addTo(mapNI);
-  L.circleMarker([p.lat,p.lng],{radius:p.r,color:p.c,fillColor:p.c,fillOpacity:0.75,weight:1.5,pane:'markerPane'})
+  L.circleMarker([p.lat,p.lng],{radius:p.r,color:p.c,fillColor:p.c,fillOpacity:0.75,weight:1.5})
     .bindPopup(tip(`<b style="color:${p.c}">${p.m}</b><br><span style="color:#556070;font-size:10px">${p.sub}</span>`)).addTo(mapNI);
 });
 
-// Isidis basin hint
-L.circle([12,87],{radius:900000,color:'#4A9FD4',weight:0.8,fillColor:'#4A9FD4',fillOpacity:0.04,dashArray:'6 4'})
-  .bindPopup(tip('<b style="color:#4A9FD4">Isidis basin (partial)</b><br>Ancient sedimentary fill<br>Secondary carbon deposit potential')).addTo(mapNI);
-
-// Infrastructure markers - Nili
-const infraNI=[
-  {lat:21.0,lng:73.9,type:'drill1',label:'Phase 1 Drill Pad',color:'#FF4422',icon:'⬡',
-   spec:'Depth: 2–5 km · Lightweight rig · Power: RTG 15kW · Timeline: Yr 4–6 · PRIMARY TARGET'},
-  {lat:22.2,lng:73.2,type:'rtg',label:'RTG Power Station',color:'#3DBFA0',icon:'⚡',
-   spec:'2× MMRTG · 220W · Graben rim position · Above dust accumulation layer'},
-  {lat:19.8,lng:74.8,type:'comms',label:'Comms Relay #1 (S rim)',color:'#4A9FD4',icon:'📡',
-   spec:'UHF/X-band · South graben rim · Direct DSN link to Earth'},
-  {lat:22.5,lng:74.2,type:'comms',label:'Comms Relay #2 (N rim)',color:'#4A9FD4',icon:'📡',
-   spec:'UHF/X-band · North graben rim · Relay to drill site below'},
-  {lat:20.5,lng:72.5,type:'proc',label:'Processing Unit',color:'#5DB870',icon:'🔬',
-   spec:'CH₄ + H₂ separator · ISRU: 6–10 t CH₄/yr + 2–4 t H₂/yr · SW rim position'},
-  {lat:21.8,lng:76.0,type:'seismic',label:'Seismic Array Node',color:'#8A70D4',icon:'📊',
-   spec:'Geophone node · 10km depth survey · Eastern array'},
-  {lat:20.2,lng:71.8,type:'seismic',label:'Seismic Array Node',color:'#8A70D4',icon:'📊',
-   spec:'Geophone node · Western array anchor'},
-  {lat:19.5,lng:73.5,type:'atm',label:'CH₄ + H₂ Monitor',color:'#E0A030',icon:'🌡',
-   spec:'Dual CH₄ + H₂ sniffer · Active serpentinisation detector · ppb sensitivity'},
-];
-
-infraNI.forEach(m=>{
+[
+  {lat:21.0,lng:73.9,label:'Phase 1 Drill Pad',color:'#FF4422',icon:'⬡',spec:'Depth: 2–5 km · Lightweight rig · RTG 15kW · Timeline: Yr 4–6 · PRIMARY TARGET'},
+  {lat:22.2,lng:73.2,label:'RTG Power Station',color:'#3DBFA0',icon:'⚡',spec:'2× MMRTG · 220W · Graben rim · Above dust layer'},
+  {lat:19.8,lng:74.8,label:'Comms Relay (S rim)',color:'#4A9FD4',icon:'📡',spec:'UHF/X-band · South graben rim · DSN link'},
+  {lat:22.5,lng:74.2,label:'Comms Relay (N rim)',color:'#4A9FD4',icon:'📡',spec:'UHF/X-band · North rim · Relay to drill site'},
+  {lat:20.5,lng:72.5,label:'Processing Unit',color:'#5DB870',icon:'🔬',spec:'CH₄ + H₂ separator · ISRU: 6–10 t CH₄/yr + 2–4 t H₂/yr'},
+  {lat:21.8,lng:76.0,label:'Seismic Node (E)',color:'#8A70D4',icon:'📊',spec:'Geophone node · 10km depth survey · Eastern array'},
+  {lat:20.2,lng:71.8,label:'Seismic Node (W)',color:'#8A70D4',icon:'📊',spec:'Geophone node · Western array anchor'},
+  {lat:19.5,lng:73.5,label:'CH₄ + H₂ Monitor',color:'#E0A030',icon:'🌡',spec:'Dual CH₄ + H₂ sniffer · Active serpentinisation detector'},
+].forEach(m=>{
   L.marker([m.lat,m.lng],{icon:L.divIcon({
     html:`<div style="width:28px;height:28px;border-radius:50%;background:rgba(10,13,18,0.9);border:2px solid ${m.color};display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;box-shadow:0 0 8px ${m.color}44">${m.icon}</div>`,
     iconSize:[28,28],iconAnchor:[14,14],className:''
-  }),pane:'markerPane'})
-    .bindPopup(`<div class="m-tip"><b style="color:${m.color}">${m.label}</b><br><span style="color:#556070;font-size:10px">${m.spec}</span></div>`)
-    .addTo(mapNI);
+  })}).bindPopup(`<div class="m-tip"><b style="color:${m.color}">${m.label}</b><br><span style="color:#556070;font-size:10px">${m.spec}</span></div>`).addTo(mapNI);
 });
-
-// Comms network lines
-L.polyline([[22.2,73.2],[21.0,73.9],[20.5,72.5],[19.5,73.5]],
-  {color:'#4A9FD4',weight:0.8,dashArray:'3 3',opacity:0.4}).addTo(mapNI);
-
+L.polyline([[22.2,73.2],[21.0,73.9],[20.5,72.5],[19.5,73.5]],{color:'#4A9FD4',weight:0.8,dashArray:'3 3',opacity:0.4}).addTo(mapNI);
 mapNI.on('mousemove',e=>{
   const la=e.latlng.lat.toFixed(2),lo=e.latlng.lng.toFixed(2);
   document.getElementById('coord-disp').textContent=`CURSOR: ${la>0?la+'°N':Math.abs(la)+'°S'}, ${lo>0?lo+'°E':Math.abs(lo)+'°W'}`;
 });
 
 // ── Site toggle ──────────────────────────────────────────────────────────────
-function setSite(s){
+window.setSite = function(s){
   document.querySelectorAll('.site-content').forEach(c=>c.classList.remove('active'));
   document.getElementById('content-'+s).classList.add('active');
   document.getElementById('tab-th').className='site-tab'+(s==='th'?' active-th':'');
   document.getElementById('tab-ni').className='site-tab'+(s==='ni'?' active-ni':'');
-  // Invalidate map size when shown
   setTimeout(()=>{ mapTH.invalidateSize(); mapNI.invalidateSize(); },100);
-}
-// Force map renders on load
-setTimeout(()=>{ mapTH.invalidateSize(); mapNI.invalidateSize(); }, 200);
+};
+
+// Force render
+setTimeout(()=>{ mapTH.invalidateSize(); mapNI.invalidateSize(); }, 300);
+
+}); // end DOMContentLoaded
+
 </script>
 </body>
 </html>
