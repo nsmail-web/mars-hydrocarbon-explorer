@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Methane depth calculator · Module 03</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:#0A0D12; --surface:#111520; --panel:#161B27; --border:#1E2535;
+  --border2:#263347; --text:#C8D4E4; --muted:#556070; --dim:#1A2030;
+  --accent:#E87040; --teal:#3DBFA0; --blue:#4A9FD4; --amber:#E0A030;
+  --red:#D45050; --green:#5DB870; --purple:#8A70D4;
+  --mono:'IBM Plex Mono',monospace; --sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* Nav */
+.nav{position:fixed;top:0;left:0;right:0;height:44px;background:rgba(10,13,18,0.97);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:20px;z-index:100;backdrop-filter:blur(8px);}
+.nav-logo{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.1em;}
+.nav-logo span{color:var(--muted);}
+.nav-back{font-family:var(--mono);font-size:10px;color:var(--muted);text-decoration:none;letter-spacing:0.06em;margin-left:auto;padding:4px 10px;border:1px solid var(--border2);border-radius:3px;}
+.nav-back:hover{color:var(--text);border-color:var(--accent);}
+
+/* Layout */
+.page{max-width:1200px;margin:0 auto;padding:60px 24px 80px;}
+
+/* Hero */
+.hero{padding:40px 0 32px;border-bottom:1px solid var(--border);margin-bottom:40px;}
+.hero-tag{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:0.12em;margin-bottom:10px;}
+.hero-title{font-size:32px;font-weight:600;color:#fff;letter-spacing:-0.02em;margin-bottom:8px;}
+.hero-sub{font-size:14px;color:var(--muted);max-width:600px;line-height:1.6;}
+
+/* Main grid */
+.main-grid{display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start;}
+
+/* Controls panel */
+.controls{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;position:sticky;top:60px;}
+.ctrl-section{margin-bottom:24px;}
+.ctrl-section:last-child{margin-bottom:0;}
+.ctrl-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.08em;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+.ctrl-label span{color:var(--teal);font-size:12px;}
+
+.slider-row{margin-bottom:14px;}
+.slider-row:last-child{margin-bottom:0;}
+.sl-header{display:flex;justify-content:space-between;margin-bottom:6px;}
+.sl-name{font-size:12px;color:var(--text);}
+.sl-val{font-family:var(--mono);font-size:12px;color:var(--accent);}
+.sl-unit{font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:3px;}
+input[type=range]{width:100%;height:3px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer;}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;}
+.sl-desc{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;}
+
+/* Site selector */
+.site-pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:0;}
+.site-pill{padding:5px 10px;border-radius:4px;border:1px solid var(--border2);background:transparent;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;transition:all 0.15s;letter-spacing:0.04em;}
+.site-pill:hover{border-color:var(--accent);color:var(--text);}
+.site-pill.active{background:rgba(232,112,64,0.12);border-color:var(--accent);color:var(--accent);}
+
+/* Divider */
+.ctrl-divider{border:none;border-top:1px solid var(--border);margin:20px 0;}
+
+/* Results panel */
+.results{}
+
+/* Key metrics row */
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.metric{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;}
+.metric-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.07em;margin-bottom:6px;}
+.metric-val{font-family:var(--mono);font-size:24px;font-weight:500;line-height:1;margin-bottom:3px;}
+.metric-unit{font-size:11px;color:var(--muted);}
+.metric-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+/* Viability badge */
+.viability{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:16px;}
+.viab-bar-wrap{flex:1;height:8px;background:var(--dim);border-radius:4px;overflow:hidden;}
+.viab-bar{height:100%;border-radius:4px;transition:width 0.4s ease,background 0.4s ease;}
+.viab-label{font-family:var(--mono);font-size:11px;white-space:nowrap;}
+.viab-score{font-family:var(--mono);font-size:20px;font-weight:500;white-space:nowrap;}
+.viab-text{font-size:12px;color:var(--muted);flex:1;}
+
+/* Charts */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;}
+.chart-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.07em;margin-bottom:12px;}
+.chart-wrap{position:relative;height:200px;}
+
+/* Phase state */
+.phase-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:20px;}
+.phase-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.07em;margin-bottom:12px;}
+.phase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.phase-item{background:var(--dim);border-radius:6px;padding:10px;text-align:center;border:1px solid transparent;transition:all 0.2s;}
+.phase-item.active{border-color:var(--teal);background:rgba(61,191,160,0.08);}
+.phase-icon{font-size:18px;margin-bottom:4px;}
+.phase-name{font-family:var(--mono);font-size:9px;letter-spacing:0.06em;color:var(--muted);}
+.phase-name.active-text{color:var(--teal);}
+.phase-cond{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.4;}
+
+/* Formation pathway */
+.pathway-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:20px;}
+.pathway-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.07em;margin-bottom:14px;}
+.pathway-steps{display:flex;flex-direction:column;gap:0;}
+.pw-step{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.pw-step:last-child{border-bottom:none;padding-bottom:0;}
+.pw-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:500;flex-shrink:0;margin-top:1px;transition:all 0.3s;}
+.pw-dot.ok{background:rgba(61,191,160,0.15);color:var(--teal);border:1px solid rgba(61,191,160,0.4);}
+.pw-dot.warn{background:rgba(224,160,48,0.15);color:var(--amber);border:1px solid rgba(224,160,48,0.4);}
+.pw-dot.bad{background:rgba(212,80,80,0.15);color:var(--red);border:1px solid rgba(212,80,80,0.4);}
+.pw-content strong{font-size:12px;font-weight:500;color:var(--text);display:block;margin-bottom:2px;}
+.pw-content p{font-size:11px;color:var(--muted);line-height:1.5;}
+
+/* Reaction equation */
+.reaction{background:#060A14;border:1px solid var(--border2);border-radius:6px;padding:10px 14px;margin-top:8px;font-family:var(--mono);font-size:12px;color:#8EB8D8;line-height:1.8;}
+.reaction .arrow{color:var(--blue);}
+.reaction .highlight{color:var(--teal);}
+
+/* Info callout */
+.info-box{background:rgba(74,159,212,0.06);border:1px solid rgba(74,159,212,0.2);border-radius:6px;padding:12px 16px;margin-bottom:20px;}
+.info-box p{font-size:12px;color:#8099B0;line-height:1.7;}
+.info-box strong{color:var(--text);font-weight:500;}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">◈ MARS-HSE <span>/ MODULE 03</span></div>
+  <a class="nav-back" href="../modules/01-site-map.html">← SITE MAP</a>
+</nav>
+
+<div class="page">
+  <div class="hero">
+    <div class="hero-tag">◈ SUBSURFACE PHYSICS · INTERACTIVE CALCULATOR</div>
+    <h1 class="hero-title">Methane depth & pressure model</h1>
+    <p class="hero-sub">Adjust depth, geothermal gradient, and crustal properties to model Fischer-Tropsch synthesis conditions and estimate reservoir viability at each candidate site.</p>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- Controls -->
+    <div class="controls">
+
+      <!-- Site presets -->
+      <div class="ctrl-section">
+        <div class="ctrl-label">CANDIDATE SITE PRESETS</div>
+        <div class="site-pills">
+          <button class="site-pill active" onclick="loadPreset('tharsis')">THARSIS</button>
+          <button class="site-pill" onclick="loadPreset('nili')">NILI FOSSAE</button>
+          <button class="site-pill" onclick="loadPreset('hellas')">HELLAS</button>
+          <button class="site-pill" onclick="loadPreset('arabia')">ARABIA</button>
+          <button class="site-pill" onclick="loadPreset('valles')">VALLES</button>
+        </div>
+      </div>
+
+      <hr class="ctrl-divider">
+
+      <!-- Depth -->
+      <div class="ctrl-section">
+        <div class="ctrl-label">CRUSTAL PARAMETERS</div>
+
+        <div class="slider-row">
+          <div class="sl-header">
+            <span class="sl-name">Target depth</span>
+            <span><span class="sl-val" id="v-depth">7</span><span class="sl-unit">km</span></span>
+          </div>
+          <input type="range" id="s-depth" min="1" max="30" step="0.5" value="7" oninput="update()">
+          <div class="sl-desc">Estimated depth to reservoir rock</div>
+        </div>
+
+        <div class="slider-row">
+          <div class="sl-header">
+            <span class="sl-name">Geothermal gradient</span>
+            <span><span class="sl-val" id="v-geotherm">10</span><span class="sl-unit">°C/km</span></span>
+          </div>
+          <input type="range" id="s-geotherm" min="3" max="30" step="0.5" value="10" oninput="update()">
+          <div class="sl-desc">InSight seismic model: ~10°C/km average</div>
+        </div>
+
+        <div class="slider-row">
+          <div class="sl-header">
+            <span class="sl-name">Surface temperature</span>
+            <span><span class="sl-val" id="v-surftemp">-60</span><span class="sl-unit">°C</span></span>
+          </div>
+          <input type="range" id="s-surftemp" min="-100" max="-20" step="5" value="-60" oninput="update()">
+          <div class="sl-desc">Average surface temp at site latitude</div>
+        </div>
+
+        <div class="slider-row">
+          <div class="sl-header">
+            <span class="sl-name">Crustal density</span>
+            <span><span class="sl-val" id="v-density">2900</span><span class="sl-unit">kg/m³</span></span>
+          </div>
+          <input type="range" id="s-density" min="2500" max="3300" step="50" value="2900" oninput="update()">
+          <div class="sl-desc">Martian basalt: 2,700–3,100 kg/m³</div>
+        </div>
+      </div>
+
+      <hr class="ctrl-divider">
+
+      <!-- Reservoir -->
+      <div class="ctrl-section">
+        <div class="ctrl-label">RESERVOIR PROPERTIES</div>
+
+        <div class="slider-row">
+          <div class="sl-header">
+            <span class="sl-name">Porosity</span>
+            <span><span class="sl-val" id="v-porosity">8</span><span class="sl-unit">%</span></span>
+          </div>
+          <input type="range" id="s-porosity" min="1" max="25" step="0.5" value="8" oninput="update()">
+          <div class="sl-desc">Fractured basalt: 5–15% typical</div>
+        </div>
+
+        <div class="slider-row">
+          <div class="sl-header">
+            <span class="sl-name">CO₂ partial pressure</span>
+            <span><span class="sl-val" id="v-co2">0.6</span><span class="sl-unit">kPa</span></span>
+          </div>
+          <input type="range" id="s-co2" min="0.1" max="2.0" step="0.05" value="0.6" oninput="update()">
+          <div class="sl-desc">Surface CO₂ pressure (Mars avg: 0.6 kPa)</div>
+        </div>
+
+        <div class="slider-row">
+          <div class="sl-header">
+            <span class="sl-name">Cryosphere thickness</span>
+            <span><span class="sl-val" id="v-cryo">3</span><span class="sl-unit">km</span></span>
+          </div>
+          <input type="range" id="s-cryo" min="0" max="10" step="0.5" value="3" oninput="update()">
+          <div class="sl-desc">Permafrost depth — acts as cap rock seal</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results">
+
+      <!-- Key metrics -->
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">RESERVOIR PRESSURE</div>
+          <div class="metric-val" id="r-pressure" style="color:var(--teal)">—</div>
+          <div class="metric-unit">MPa (lithostatic)</div>
+          <div class="metric-sub" id="r-pressure-sub">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">RESERVOIR TEMPERATURE</div>
+          <div class="metric-val" id="r-temp" style="color:var(--amber)">—</div>
+          <div class="metric-unit">°C at target depth</div>
+          <div class="metric-sub" id="r-temp-sub">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">DRILL DEPTH REQUIRED</div>
+          <div class="metric-val" id="r-drill" style="color:var(--blue)">—</div>
+          <div class="metric-unit">km to FT window</div>
+          <div class="metric-sub" id="r-drill-sub">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">METHANE DENSITY</div>
+          <div class="metric-val" id="r-density" style="color:var(--purple)">—</div>
+          <div class="metric-unit">kg/m³ at P,T</div>
+          <div class="metric-sub" id="r-density-sub">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">RESERVOIR VOLUME EST.</div>
+          <div class="metric-val" id="r-volume" style="color:var(--accent)">—</div>
+          <div class="metric-unit">km³ (pore space)</div>
+          <div class="metric-sub" id="r-volume-sub">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">SEAL INTEGRITY</div>
+          <div class="metric-val" id="r-seal" style="color:var(--green)">—</div>
+          <div class="metric-unit">cryosphere seal</div>
+          <div class="metric-sub" id="r-seal-sub">—</div>
+        </div>
+      </div>
+
+      <!-- Viability -->
+      <div class="viability">
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px">FT VIABILITY INDEX</div>
+          <div class="viab-score" id="viab-score" style="color:var(--teal)">—</div>
+        </div>
+        <div style="flex:1">
+          <div class="viab-bar-wrap"><div class="viab-bar" id="viab-bar"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--muted)">
+            <span>NOT VIABLE</span><span>MARGINAL</span><span>OPTIMAL</span>
+          </div>
+        </div>
+        <div class="viab-text" id="viab-text">—</div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">TEMPERATURE vs DEPTH PROFILE</div>
+          <div class="chart-wrap"><canvas id="chart-temp"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">PRESSURE vs DEPTH PROFILE</div>
+          <div class="chart-wrap"><canvas id="chart-pressure"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Phase state -->
+      <div class="phase-card">
+        <div class="phase-title">METHANE PHASE STATE AT TARGET DEPTH</div>
+        <div class="phase-grid" id="phase-grid">
+          <div class="phase-item" id="phase-gas">
+            <div class="phase-icon">💨</div>
+            <div class="phase-name" id="phase-gas-label">GAS</div>
+            <div class="phase-cond">&gt;−82°C<br>&lt;4.6 MPa</div>
+          </div>
+          <div class="phase-item" id="phase-super">
+            <div class="phase-icon">⚡</div>
+            <div class="phase-name" id="phase-super-label">SUPERCRITICAL</div>
+            <div class="phase-cond">&gt;−82°C<br>&gt;4.6 MPa</div>
+          </div>
+          <div class="phase-item" id="phase-clath">
+            <div class="phase-icon">❄️</div>
+            <div class="phase-name" id="phase-clath-label">CLATHRATE</div>
+            <div class="phase-cond">&lt;15°C<br>2–10 MPa</div>
+          </div>
+          <div class="phase-item" id="phase-liquid">
+            <div class="phase-icon">💧</div>
+            <div class="phase-name" id="phase-liquid-label">LIQUID</div>
+            <div class="phase-cond">&lt;−82°C<br>2–50 MPa</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formation pathway -->
+      <div class="pathway-card">
+        <div class="pathway-title">FISCHER-TROPSCH PATHWAY STATUS</div>
+        <div class="pathway-steps">
+          <div class="pw-step">
+            <div class="pw-dot" id="pw1">1</div>
+            <div class="pw-content">
+              <strong>CO₂ feedstock availability</strong>
+              <p id="pw1-text">Atmospheric CO₂ (0.6 kPa) + subducted carbonates provide feedstock for synthesis.</p>
+              <div class="reaction">CO₂ + 4H₂ <span class="arrow">→</span> <span class="highlight">CH₄</span> + 2H₂O &nbsp;<span style="color:var(--muted);font-size:10px">(Fischer-Tropsch, 200–400°C)</span></div>
+            </div>
+          </div>
+          <div class="pw-step">
+            <div class="pw-dot" id="pw2">2</div>
+            <div class="pw-content">
+              <strong>Serpentinisation H₂ source</strong>
+              <p id="pw2-text">Fe-olivine + H₂O at 150–350°C produces H₂ required for CO₂ reduction.</p>
+              <div class="reaction">3FeSiO₃ + H₂O <span class="arrow">→</span> Fe₃O₄ + 3SiO₂ + <span class="highlight">H₂</span></div>
+            </div>
+          </div>
+          <div class="pw-step">
+            <div class="pw-dot" id="pw3">3</div>
+            <div class="pw-content">
+              <strong>Temperature window</strong>
+              <p id="pw3-text">Fischer-Tropsch requires 200–400°C. Current target depth temperature: calculating…</p>
+            </div>
+          </div>
+          <div class="pw-step">
+            <div class="pw-dot" id="pw4">4</div>
+            <div class="pw-content">
+              <strong>Pressure & trap geometry</strong>
+              <p id="pw4-text">Minimum 50 MPa required for gas to migrate and accumulate in trap structures.</p>
+            </div>
+          </div>
+          <div class="pw-step">
+            <div class="pw-dot" id="pw5">5</div>
+            <div class="pw-content">
+              <strong>Cryosphere cap rock seal</strong>
+              <p id="pw5-text">Permafrost above reservoir acts as impermeable seal preventing gas escape.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <p><strong>Model assumptions:</strong> Lithostatic pressure = ρgh where g = 3.72 m/s² (Mars gravity). Temperature = surface temp + depth × geothermal gradient. Methane density estimated via van der Waals equation of state. Reservoir volume assumes 10 km² trap area × porosity × depth below cryosphere. FT viability index weights: temperature window (40%) + pressure (25%) + CO₂ availability (20%) + seal integrity (15%).</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Site presets ─────────────────────────────────────────────────────────────
+const PRESETS = {
+  tharsis: { depth:7,  geotherm:10, surftemp:-60, density:2900, porosity:8,  co2:0.6, cryo:4, name:'Tharsis dome complex' },
+  nili:    { depth:4,  geotherm:12, surftemp:-55, density:2800, porosity:10, co2:0.6, cryo:2, name:'Nili Fossae trough' },
+  hellas:  { depth:10, geotherm:8,  surftemp:-50, density:3000, porosity:6,  co2:0.7, cryo:5, name:'Hellas basin rim' },
+  arabia:  { depth:6,  geotherm:9,  surftemp:-58, density:2850, porosity:9,  co2:0.6, cryo:3, name:'Arabia Terra plateau' },
+  valles:  { depth:12, geotherm:7,  surftemp:-65, density:2950, porosity:7,  co2:0.6, cryo:6, name:'Valles Marineris rifts' },
+};
+
+function loadPreset(id) {
+  const p = PRESETS[id];
+  document.getElementById('s-depth').value    = p.depth;
+  document.getElementById('s-geotherm').value = p.geotherm;
+  document.getElementById('s-surftemp').value = p.surftemp;
+  document.getElementById('s-density').value  = p.density;
+  document.getElementById('s-porosity').value = p.porosity;
+  document.getElementById('s-co2').value      = p.co2;
+  document.getElementById('s-cryo').value     = p.cryo;
+  document.querySelectorAll('.site-pill').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  update();
+}
+
+// ── Physics model ─────────────────────────────────────────────────────────────
+const G_MARS = 3.72; // m/s²
+const FT_MIN_T = 200, FT_MAX_T = 400; // °C
+const FT_MIN_P = 50,  FT_MAX_P = 300; // MPa
+const SERP_MIN_T = 150, SERP_MAX_T = 350; // °C
+
+function calcTemp(depth_km, surftemp, geotherm) {
+  return surftemp + depth_km * geotherm;
+}
+function calcPressure(depth_km, density) {
+  // P = ρ × g × h (MPa)
+  return (density * G_MARS * depth_km * 1000) / 1e6;
+}
+function calcMethDensity(T_C, P_MPa) {
+  // van der Waals approximation for CH₄
+  // a=2.253 L²·atm/mol², b=0.04278 L/mol, M=16.04 g/mol
+  const a=2.253, b=0.04278, R=0.08206, M=16.04;
+  const T_K = T_C + 273.15;
+  const P_atm = P_MPa * 9.8692;
+  // Cubic solve simplified — use reduced properties
+  const Tc=190.6, Pc=45.4; // K, atm
+  const Tr=T_K/Tc, Pr=P_atm/Pc;
+  // Peng-Robinson Z approximation
+  const omega=0.011;
+  const alpha=Math.pow(1+(0.37464+1.54226*omega-0.26992*omega*omega)*(1-Math.sqrt(Tr)),2);
+  const A=0.45724*alpha*Pr/(Tr*Tr);
+  const B=0.07780*Pr/Tr;
+  // Solve cubic: Z³ - (1-B)Z² + (A-3B²-2B)Z - (AB-B²-B³) = 0
+  // Newton-Raphson
+  let Z=Math.max(0.1,Pr/Tr);
+  for(let i=0;i<50;i++){
+    const f=Z*Z*Z-(1-B)*Z*Z+(A-3*B*B-2*B)*Z-(A*B-B*B-B*B*B);
+    const df=3*Z*Z-2*(1-B)*Z+(A-3*B*B-2*B);
+    const dZ=f/df; Z-=dZ;
+    if(Math.abs(dZ)<1e-8) break;
+  }
+  const V_L_mol=Z*R*T_K/P_atm; // L/mol
+  return M/(V_L_mol*1000); // kg/m³ — convert L to m³ (×0.001 then /0.001 cancel with M/1000)
+}
+
+function calcViability(T, P_MPa, co2, porosity, cryo, depth) {
+  // Temperature score (0-40): peaks at 300°C
+  let tScore = 0;
+  if(T >= FT_MIN_T && T <= FT_MAX_T) {
+    tScore = 40 * (1 - Math.abs(T-300)/150);
+  } else if(T < FT_MIN_T) {
+    tScore = 40 * Math.max(0, (T - SERP_MIN_T)/(FT_MIN_T - SERP_MIN_T)) * 0.3;
+  } else {
+    tScore = 40 * Math.max(0, 1-(T-FT_MAX_T)/200) * 0.5;
+  }
+
+  // Pressure score (0-25)
+  let pScore = 0;
+  if(P_MPa >= FT_MIN_P && P_MPa <= FT_MAX_P) pScore = 25;
+  else if(P_MPa < FT_MIN_P) pScore = 25 * (P_MPa/FT_MIN_P);
+  else pScore = 25 * Math.max(0, 1-(P_MPa-FT_MAX_P)/300);
+
+  // CO₂ score (0-20)
+  const co2Score = Math.min(20, co2/0.6*20);
+
+  // Seal score (0-15)
+  const sealScore = depth > cryo ? Math.min(15, cryo/3*15) : 5;
+
+  return Math.round(tScore + pScore + co2Score + sealScore);
+}
+
+// ── Charts ─────────────────────────────────────────────────────────────────────
+let tempChart, pressChart;
+
+function initCharts() {
+  const baseOpts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display:false }, tooltip:{ backgroundColor:'#111520', titleColor:'#C8D4E4', bodyColor:'#556070', borderColor:'#263347', borderWidth:1 }},
+    scales:{
+      x:{ grid:{ color:'#1E2535' }, ticks:{ color:'#556070', font:{family:'IBM Plex Mono',size:10} }},
+      y:{ grid:{ color:'#1E2535' }, ticks:{ color:'#556070', font:{family:'IBM Plex Mono',size:10} }, reverse:true }
+    }
+  };
+
+  tempChart = new Chart(document.getElementById('chart-temp'), {
+    type:'line',
+    data:{ labels:[], datasets:[
+      { label:'Temperature', data:[], borderColor:'#E0A030', borderWidth:2, pointRadius:0, fill:false },
+      { label:'FT min (200°C)', data:[], borderColor:'rgba(61,191,160,0.4)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:false },
+      { label:'FT max (400°C)', data:[], borderColor:'rgba(212,80,80,0.4)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:false },
+    ]},
+    options:{ ...baseOpts, scales:{ ...baseOpts.scales,
+      x:{ ...baseOpts.scales.x, title:{ display:true, text:'Temperature (°C)', color:'#556070', font:{family:'IBM Plex Mono',size:10} }},
+      y:{ ...baseOpts.scales.y, title:{ display:true, text:'Depth (km)', color:'#556070', font:{family:'IBM Plex Mono',size:10} }, reverse:true }
+    }}
+  });
+
+  pressChart = new Chart(document.getElementById('chart-pressure'), {
+    type:'line',
+    data:{ labels:[], datasets:[
+      { label:'Pressure', data:[], borderColor:'#4A9FD4', borderWidth:2, pointRadius:0, fill:false },
+      { label:'FT min (50 MPa)', data:[], borderColor:'rgba(61,191,160,0.4)', borderWidth:1, borderDash:[4,3], pointRadius:0, fill:false },
+    ]},
+    options:{ ...baseOpts, scales:{ ...baseOpts.scales,
+      x:{ ...baseOpts.scales.x, title:{ display:true, text:'Pressure (MPa)', color:'#556070', font:{family:'IBM Plex Mono',size:10} }},
+      y:{ ...baseOpts.scales.y, title:{ display:true, text:'Depth (km)', color:'#556070', font:{family:'IBM Plex Mono',size:10} }, reverse:true }
+    }}
+  });
+}
+
+// ── Main update ────────────────────────────────────────────────────────────────
+function update() {
+  const depth    = parseFloat(document.getElementById('s-depth').value);
+  const geotherm = parseFloat(document.getElementById('s-geotherm').value);
+  const surftemp = parseFloat(document.getElementById('s-surftemp').value);
+  const density  = parseFloat(document.getElementById('s-density').value);
+  const porosity = parseFloat(document.getElementById('s-porosity').value);
+  const co2      = parseFloat(document.getElementById('s-co2').value);
+  const cryo     = parseFloat(document.getElementById('s-cryo').value);
+
+  // Update slider displays
+  document.getElementById('v-depth').textContent    = depth;
+  document.getElementById('v-geotherm').textContent = geotherm;
+  document.getElementById('v-surftemp').textContent = surftemp;
+  document.getElementById('v-density').textContent  = density;
+  document.getElementById('v-porosity').textContent = porosity;
+  document.getElementById('v-co2').textContent      = co2.toFixed(2);
+  document.getElementById('v-cryo').textContent     = cryo;
+
+  // Calculate
+  const T   = calcTemp(depth, surftemp, geotherm);
+  const P   = calcPressure(depth, density);
+  const rho = calcMethDensity(T, Math.max(0.1, P));
+
+  // Depth to reach FT min temperature
+  const depthToFT = Math.max(0, (FT_MIN_T - surftemp) / geotherm);
+
+  // Reservoir volume: assume 10km × 10km trap × porosity fraction × depth below cryo
+  const reservoirThickness = Math.max(0, depth - cryo);
+  const vol = reservoirThickness > 0 ? (100 * reservoirThickness * (porosity/100)).toFixed(1) : '0';
+
+  // Seal integrity
+  const sealOK = depth > cryo && cryo >= 1;
+  const sealText = sealOK ? (cryo >= 3 ? 'GOOD' : 'MARGINAL') : 'NONE';
+  const sealColor = sealOK ? (cryo >= 3 ? 'var(--green)' : 'var(--amber)') : 'var(--red)';
+
+  // Update metrics
+  const tColor = T>=FT_MIN_T&&T<=FT_MAX_T ? 'var(--teal)' : T>FT_MAX_T ? 'var(--red)' : 'var(--amber)';
+  const pColor = P>=FT_MIN_P ? 'var(--teal)' : 'var(--amber)';
+
+  document.getElementById('r-pressure').textContent = P.toFixed(0);
+  document.getElementById('r-pressure').style.color = pColor;
+  document.getElementById('r-pressure-sub').textContent = P>=FT_MIN_P ? '✓ Above FT minimum (50 MPa)' : `Need ${(FT_MIN_P-P).toFixed(0)} MPa more`;
+
+  document.getElementById('r-temp').textContent = T.toFixed(0);
+  document.getElementById('r-temp').style.color = tColor;
+  document.getElementById('r-temp-sub').textContent =
+    T>=FT_MIN_T&&T<=FT_MAX_T ? '✓ Within FT window (200–400°C)' :
+    T<FT_MIN_T ? `${(FT_MIN_T-T).toFixed(0)}°C below FT minimum` :
+    `${(T-FT_MAX_T).toFixed(0)}°C above FT maximum`;
+
+  document.getElementById('r-drill').textContent = depthToFT.toFixed(1);
+  document.getElementById('r-drill').style.color = depthToFT<=depth ? 'var(--teal)' : 'var(--amber)';
+  document.getElementById('r-drill-sub').textContent = depthToFT<=depth ? '✓ FT zone within target range' : 'Drill deeper to reach FT zone';
+
+  document.getElementById('r-density').textContent = rho > 0 ? rho.toFixed(1) : '—';
+  document.getElementById('r-density-sub').textContent =
+    rho > 300 ? 'Supercritical / dense phase' :
+    rho > 50  ? 'Compressed gas phase' : 'Low-density gas';
+
+  document.getElementById('r-volume').textContent = vol;
+  document.getElementById('r-volume-sub').textContent =
+    reservoirThickness > 0 ? `${reservoirThickness.toFixed(1)} km below cryosphere` : 'Target above cryosphere';
+
+  document.getElementById('r-seal').textContent = sealText;
+  document.getElementById('r-seal').style.color = sealColor;
+  document.getElementById('r-seal-sub').textContent = `${cryo} km permafrost seal`;
+
+  // Viability
+  const viab = calcViability(T, P, co2, porosity, cryo, depth);
+  const viabColor = viab>=70?'var(--teal)':viab>=40?'var(--amber)':'var(--red)';
+  document.getElementById('viab-score').textContent = viab + '/100';
+  document.getElementById('viab-score').style.color = viabColor;
+  document.getElementById('viab-bar').style.width = viab + '%';
+  document.getElementById('viab-bar').style.background = viabColor;
+  document.getElementById('viab-text').textContent =
+    viab>=80 ? 'Excellent — all conditions met for active CH₄ synthesis' :
+    viab>=60 ? 'Good — FT conditions met, minor constraints on yield' :
+    viab>=40 ? 'Marginal — some conditions met but key parameters outside window' :
+    viab>=20 ? 'Poor — major barriers to Fischer-Tropsch synthesis at this depth' :
+               'Not viable — conditions incompatible with CH₄ formation';
+
+  // Phase state
+  const phases = {
+    gas:    T > -82 && P < 4.6,
+    super:  T > -82 && P >= 4.6,
+    clath:  T < 15  && P >= 2 && P <= 10,
+    liquid: T < -82 && P >= 2 && P <= 50,
+  };
+  // Supercritical takes priority above critical point
+  if(phases.super && T > -82 && P > 4.6) { phases.gas = false; }
+
+  ['gas','super','clath','liquid'].forEach(ph => {
+    const el = document.getElementById('phase-'+ph);
+    const lb = document.getElementById('phase-'+ph+'-label');
+    el.classList.toggle('active', !!phases[ph]);
+    lb.className = 'phase-name' + (phases[ph] ? ' active-text' : '');
+  });
+
+  // Pathway status
+  function setStep(id, status, text) {
+    const dot = document.getElementById(id);
+    dot.className = 'pw-dot ' + status;
+    dot.textContent = id.replace('pw','');
+    const el = document.getElementById(id+'-text');
+    if(el) el.textContent = text;
+  }
+
+  setStep('pw1', co2 >= 0.5 ? 'ok' : 'warn',
+    co2 >= 0.5
+      ? `CO₂ partial pressure ${co2} kPa — sufficient feedstock for FT synthesis.`
+      : `CO₂ pressure ${co2} kPa is below optimal. Higher altitude sites have lower CO₂.`);
+
+  const serpT = calcTemp(Math.min(depth, 5), surftemp, geotherm);
+  setStep('pw2', serpT >= SERP_MIN_T ? 'ok' : 'warn',
+    serpT >= SERP_MIN_T
+      ? `Serpentinisation active at ${serpT.toFixed(0)}°C — H₂ being produced from Fe-olivine hydration.`
+      : `Temperature at 5 km depth (${serpT.toFixed(0)}°C) below serpentinisation minimum (150°C). H₂ production limited.`);
+
+  setStep('pw3', T>=FT_MIN_T&&T<=FT_MAX_T ? 'ok' : T<FT_MIN_T ? 'warn' : 'bad',
+    T>=FT_MIN_T&&T<=FT_MAX_T
+      ? `${T.toFixed(0)}°C at ${depth} km — squarely within Fischer-Tropsch window (200–400°C). ✓`
+      : T<FT_MIN_T
+        ? `${T.toFixed(0)}°C at ${depth} km — ${(FT_MIN_T-T).toFixed(0)}°C below FT minimum. Drill to ${depthToFT.toFixed(1)} km to reach synthesis zone.`
+        : `${T.toFixed(0)}°C at ${depth} km — above FT maximum (400°C). Shallower target needed.`);
+
+  setStep('pw4', P>=FT_MIN_P ? 'ok' : 'warn',
+    P>=FT_MIN_P
+      ? `${P.toFixed(0)} MPa — sufficient for gas migration and trap accumulation. ✓`
+      : `${P.toFixed(0)} MPa — below minimum for effective trap accumulation (50 MPa). Deeper target needed.`);
+
+  setStep('pw5', sealOK&&cryo>=2 ? 'ok' : sealOK ? 'warn' : 'bad',
+    sealOK&&cryo>=2
+      ? `${cryo} km cryosphere provides strong impermeable seal above reservoir. ✓`
+      : sealOK
+        ? `${cryo} km cryosphere — thin seal, marginal integrity. Risk of gas escape.`
+        : `Target depth (${depth} km) is within or above the cryosphere (${cryo} km). No seal.`);
+
+  // Update charts
+  const depths = Array.from({length:31},(_,i)=>i);
+  const temps  = depths.map(d => calcTemp(d, surftemp, geotherm));
+  const press  = depths.map(d => calcPressure(d, density));
+
+  tempChart.data.labels = temps.map(t=>t.toFixed(0));
+  tempChart.data.datasets[0].data = depths.map((d,i) => ({x:temps[i],y:d}));
+  tempChart.data.datasets[1].data = depths.map(d => ({x:FT_MIN_T, y:d}));
+  tempChart.data.datasets[2].data = depths.map(d => ({x:FT_MAX_T, y:d}));
+  tempChart.options.scales.x.type = 'linear';
+  tempChart.options.scales.x.title = { display:true, text:'Temperature (°C)', color:'#556070', font:{family:'IBM Plex Mono',size:10} };
+  tempChart.data.labels = undefined;
+  tempChart.update('none');
+
+  pressChart.data.labels = press.map(p=>p.toFixed(0));
+  pressChart.data.datasets[0].data = depths.map((d,i) => ({x:press[i],y:d}));
+  pressChart.data.datasets[1].data = depths.map(d => ({x:FT_MIN_P, y:d}));
+  pressChart.options.scales.x.type = 'linear';
+  pressChart.options.scales.x.title = { display:true, text:'Pressure (MPa)', color:'#556070', font:{family:'IBM Plex Mono',size:10} };
+  pressChart.data.labels = undefined;
+  pressChart.update('none');
+}
+
+initCharts();
+update();
+</script>
+</body>
+</html>
