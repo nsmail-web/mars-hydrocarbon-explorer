@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mars site selection map · Module 01</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0A0D12; --surface:#111520; --panel:#161B27; --border:#1E2535;
+    --border2:#2A3347; --text:#C8D0E0; --muted:#5A6480; --dim:#323A52;
+    --accent:#E87040; --teal:#3DBFA0; --blue:#4A8FD4; --amber:#E0A030;
+    --red:#D45050; --purple:#8A70D4;
+    --mono:'IBM Plex Mono',monospace; --sans:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+  .topbar{display:flex;align-items:center;gap:16px;padding:0 20px;height:48px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:1000;}
+  .topbar-logo{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:0.08em;flex-shrink:0;}
+  .topbar-logo span{color:var(--muted);}
+  .topbar-title{font-size:13px;font-weight:500;color:var(--text);flex:1;}
+  .topbar-layers{display:flex;gap:6px;}
+  .layer-btn{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;border:1px solid var(--border2);background:transparent;font-family:var(--mono);font-size:10px;letter-spacing:0.06em;color:var(--muted);cursor:pointer;transition:all 0.15s;}
+  .layer-btn.active{background:var(--border);color:var(--text);border-color:var(--border2);}
+  .layer-btn .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .main{flex:1;display:flex;overflow:hidden;}
+  #map{flex:1;background:#060810;position:relative;}
+  .leaflet-container{background:#060810!important;font-family:var(--sans);}
+  .leaflet-control-attribution{display:none;}
+  .leaflet-control-zoom{border:1px solid var(--border2)!important;border-radius:4px!important;overflow:hidden;}
+  .leaflet-control-zoom a{background:var(--surface)!important;color:var(--text)!important;border-color:var(--border2)!important;line-height:26px!important;width:26px!important;height:26px!important;font-size:14px!important;}
+  .leaflet-control-zoom a:hover{background:var(--panel)!important;color:var(--accent)!important;}
+  .mars-tooltip{background:var(--surface);border:1px solid var(--border2);border-radius:4px;padding:6px 10px;font-family:var(--mono);font-size:11px;color:var(--text);box-shadow:0 4px 16px rgba(0,0,0,0.6);pointer-events:none;}
+  .mars-tooltip::before{display:none;}
+  .panel{width:340px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .panel-tab{flex:1;padding:10px 0;font-family:var(--mono);font-size:10px;letter-spacing:0.07em;color:var(--muted);background:transparent;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;}
+  .panel-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .panel-body{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
+  .panel-body::-webkit-scrollbar{width:4px;}
+  .panel-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;padding:2rem;text-align:center;}
+  .empty-icon{font-size:32px;opacity:0.2;}
+  .empty-state p{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.7;}
+  .site-header{padding:16px;border-bottom:1px solid var(--border);}
+  .site-eyebrow{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.08em;margin-bottom:6px;}
+  .site-name{font-size:16px;font-weight:600;color:#fff;margin-bottom:4px;}
+  .site-coords{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .score-row{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-shrink:0;}
+  .score-cell{background:var(--panel);padding:12px 16px;}
+  .score-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.06em;margin-bottom:4px;}
+  .score-val{font-family:var(--mono);font-size:22px;font-weight:500;line-height:1;}
+  .score-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+  .section{padding:14px 16px;border-bottom:1px solid var(--border);}
+  .section-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.08em;margin-bottom:10px;}
+  .score-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .score-bar-row:last-child{margin-bottom:0;}
+  .sbar-label{font-size:11px;color:var(--text);width:110px;flex-shrink:0;}
+  .sbar-track{flex:1;height:4px;background:var(--border2);border-radius:2px;overflow:hidden;}
+  .sbar-fill{height:100%;border-radius:2px;transition:width 0.5s cubic-bezier(0.4,0,0.2,1);}
+  .sbar-num{font-family:var(--mono);font-size:11px;color:var(--muted);width:24px;text-align:right;flex-shrink:0;}
+  .tag-row{display:flex;flex-wrap:wrap;gap:5px;}
+  .tag{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;border:1px solid var(--border2);color:var(--muted);letter-spacing:0.04em;}
+  .tag.confirmed{border-color:var(--teal);color:var(--teal);}
+  .tag.inferred{border-color:var(--amber);color:var(--amber);}
+  .tag.modelled{border-color:var(--blue);color:var(--blue);}
+  .radar-wrap{position:relative;height:180px;display:flex;align-items:center;justify-content:center;}
+  .region-list{padding:8px;}
+  .region-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:6px;cursor:pointer;transition:background 0.12s;border:1px solid transparent;}
+  .region-item:hover{background:var(--border);}
+  .region-item.active{background:var(--border);border-color:var(--border2);}
+  .ri-swatch{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .ri-name{font-size:12px;font-weight:500;flex:1;}
+  .ri-score{font-family:var(--mono);font-size:11px;}
+  .ri-conf{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .legend-wrap{position:absolute;bottom:16px;left:16px;background:rgba(10,13,18,0.92);border:1px solid var(--border2);border-radius:6px;padding:12px 14px;z-index:500;}
+  .legend-title{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-bottom:12px;}
+  .legend-item{display:flex;align-items:flex-start;gap:9px;margin-bottom:11px;}
+  .legend-item:last-child{margin-bottom:0;}
+  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:2px;}
+  .legend-label{font-size:11px;color:var(--text);line-height:1.3;}
+  .legend-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+  .mineral-legend{position:absolute;bottom:16px;left:290px;background:rgba(10,13,18,0.92);border:1px solid var(--border2);border-radius:6px;padding:12px 14px;z-index:500;display:none;}
+  .mineral-legend.visible{display:block;}
+  .elev-legend{position:absolute;bottom:16px;left:128px;background:rgba(10,13,18,0.92);border:1px solid var(--border2);border-radius:6px;padding:12px 14px;z-index:500;display:none;}
+  .elev-legend.visible{display:block;}
+  .elev-bar{width:100px;height:6px;border-radius:2px;background:linear-gradient(to right,#1c1614,#5c4840,#a07868,#d4c4bc,#eee8e4);margin:6px 0 4px;}
+  .elev-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);}
+  .basemap-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.85);border:1px solid var(--border2);border-radius:4px;padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--muted);z-index:500;pointer-events:none;}
+  .statusbar{height:24px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:20px;flex-shrink:0;}
+  .status-item{font-family:var(--mono);font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+  .status-dot{width:5px;height:5px;border-radius:50%;background:var(--teal);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">◈ MARS-HSE <span>/ MODULE 01</span></div>
+  <div class="topbar-title">Subsurface hydrocarbon site selection</div>
+  <div class="topbar-layers">
+    <button class="layer-btn active" id="btn-basemap" onclick="toggleLayer('basemap')"><span class="dot" style="background:#A08878"></span>DEM HILLSHADE</button>
+    <button class="layer-btn active" id="btn-regions" onclick="toggleLayer('regions')"><span class="dot" style="background:#ffffff"></span>CANDIDATE SITES</button>
+    <button class="layer-btn active" id="btn-crism" onclick="toggleLayer('crism')"><span class="dot" style="background:#FF4400"></span>CRISM MINERALS</button>
+    <button class="layer-btn active" id="btn-tectonic" onclick="toggleLayer('tectonic')"><span class="dot" style="background:#8A70D4"></span>TECTONIC FEATURES</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="map">
+    <div class="basemap-badge" id="basemap-badge" style="display:none">MOLA DEM HILLSHADE · NASA/USGS</div>
+
+    <!-- Confidence legend -->
+    <div class="legend-wrap">
+      <div class="legend-title">SITE CONFIDENCE</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#E87040"></div><div class="legend-label">High</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4A8FD4"></div><div class="legend-label">Moderate</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#E0A030"></div><div class="legend-label">Speculative</div></div>
+    </div>
+
+    <!-- Mineral importance legend (shown when CRISM layer on) -->
+    <div class="mineral-legend visible" id="mineral-legend">
+      <div class="legend-title">MINERAL · CH₄ RELEVANCE</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FF2200"></div><div><div class="legend-label">Serpentinite</div><div class="legend-sub">Critical — H₂ source</div></div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FF8800"></div><div><div class="legend-label">Carbonate/Magnesite</div><div class="legend-sub">High — CO₂ feedstock</div></div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FFCC00"></div><div><div class="legend-label">Olivine</div><div class="legend-sub">Medium — serpentinises</div></div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8888AA"></div><div><div class="legend-label">Pyroxene / Sulfate</div><div class="legend-sub">Low — indirect indicator</div></div></div>
+    </div>
+
+    <!-- Elevation legend -->
+    <div class="elev-legend visible" id="elev-legend">
+      <div class="legend-title">DEM ELEVATION</div>
+      <div class="elev-bar"></div>
+      <div class="elev-labels"><span>Low</span><span>High</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" id="ptab-detail" onclick="switchTab('detail')">SITE DETAIL</button>
+      <button class="panel-tab" id="ptab-sites" onclick="switchTab('sites')">ALL SITES</button>
+      <button class="panel-tab" id="ptab-data" onclick="switchTab('data')">DATA SOURCES</button>
+    </div>
+    <div class="panel-body" id="panel-body">
+      <div class="empty-state"><div class="empty-icon">◎</div><p>Click a candidate site on the map to load geologic scoring and data provenance.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="status-item"><div class="status-dot"></div>LIVE</div>
+  <div class="status-item">5 CANDIDATE REGIONS LOADED</div>
+  <div class="status-item" id="coord-status">CURSOR: —</div>
+  <div class="status-item" style="margin-left:auto">DATA: NASA PDS · USGS ASTRO · CRISM PDS</div>
+</div>
+
+<script>
+// ── Mineral importance for methane formation ────────────────────────────────
+// Ranked by direct relevance to Fischer-Tropsch / serpentinisation pathway
+const MINERAL_CONFIG = {
+  'Serpentinite': {
+    color: '#FF2200',       // Critical: produces H₂ via serpentinisation → drives CH₄ synthesis
+    glow: '#FF440044',
+    importance: 'CRITICAL',
+    rank: 1,
+    radius: 14,
+    opacity: 0.85,
+    note: 'Direct H₂ source via Fe-olivine hydration'
+  },
+  'Carbonate': {
+    color: '#FF8800',       // High: CO₂ feedstock for Fischer-Tropsch
+    glow: '#FF880033',
+    importance: 'HIGH',
+    rank: 2,
+    radius: 11,
+    opacity: 0.75,
+    note: 'CO₂ reservoir — primary feedstock'
+  },
+  'Magnesite': {
+    color: '#FFAA00',       // High: Mg-carbonate, formed during serpentinisation
+    glow: '#FFAA0033',
+    importance: 'HIGH',
+    rank: 2,
+    radius: 10,
+    opacity: 0.70,
+    note: 'Mg-carbonate co-product of serpentinisation'
+  },
+  'Olivine': {
+    color: '#FFCC00',       // Medium: precursor to serpentinite when hydrated
+    glow: '#FFCC0022',
+    importance: 'MEDIUM',
+    rank: 3,
+    radius: 9,
+    opacity: 0.60,
+    note: 'Serpentinisation precursor under hydration'
+  },
+  'Pyroxene': {
+    color: '#8899AA',       // Low: structural mineral, minor indirect role
+    glow: '#8899AA22',
+    importance: 'LOW',
+    rank: 4,
+    radius: 7,
+    opacity: 0.45,
+    note: 'Structural basalt; minor catalytic role'
+  },
+  'Sulfate': {
+    color: '#7777AA',       // Low: evaporite indicator, marks ancient water activity
+    glow: '#7777AA22',
+    importance: 'LOW',
+    rank: 4,
+    radius: 7,
+    opacity: 0.40,
+    note: 'Evaporite; marks ancient aqueous activity'
+  },
+};
+
+const SITES = [
+  { id:'tharsis', name:'Tharsis dome complex', lat:0, lng:-95, coords:'0.0°N, 100.0°W', confidence:'HIGH', color:'#E87040', overallScore:82, viability:78,
+    scores:{'Trap geometry':88,'Cap rock integrity':84,'CO₂ feedstock':90,'Geothermal history':92,'Serpentinite evidence':55,'Surface accessibility':62},
+    dataTags:[{label:'MOLA elevation',type:'confirmed'},{label:'Volcanic stratigraphy',type:'confirmed'},{label:'Crustal thickness model',type:'modelled'},{label:'Methane plume (tentative)',type:'inferred'}],
+    blurb:'The largest volcanic province in the solar system. Enormous dome geometry creates near-ideal structural closure. Deep basaltic sequences provide natural cap rock. Geothermal flux sustained Fischer-Tropsch synthesis for >1 Gyr.',
+    depthEst:'4–9 km', pressureEst:'120–280 MPa', riskLevel:'MEDIUM'},
+  { id:'nili', name:'Nili Fossae trough', lat:21, lng:74, coords:'21.0°N, 74.0°E', confidence:'HIGH', color:'#E87040', overallScore:79, viability:85,
+    scores:{'Trap geometry':70,'Cap rock integrity':65,'CO₂ feedstock':88,'Geothermal history':80,'Serpentinite evidence':95,'Surface accessibility':72},
+    dataTags:[{label:'Serpentinite (CRISM)',type:'confirmed'},{label:'Carbonate outcrops',type:'confirmed'},{label:'CH₄ plume detection',type:'inferred'},{label:'Ancient crust exposure',type:'confirmed'}],
+    blurb:'Strongest observational anchor in the dataset. CRISM spectral data confirms serpentinite and carbonate minerals — direct evidence of the serpentinisation pathway. Tentative methane plumes detected above this region.',
+    depthEst:'2–6 km', pressureEst:'60–180 MPa', riskLevel:'LOW'},
+  { id:'hellas', name:'Hellas basin rim', lat:-45, lng:70, coords:'45.0°S, 70.0°E', confidence:'MODERATE', color:'#4A8FD4', overallScore:61, viability:58,
+    scores:{'Trap geometry':72,'Cap rock integrity':60,'CO₂ feedstock':75,'Geothermal history':55,'Serpentinite evidence':40,'Surface accessibility':45},
+    dataTags:[{label:'Impact uplift (MOLA)',type:'confirmed'},{label:'Anticline structures',type:'inferred'},{label:'Sediment sequence',type:'modelled'},{label:'High atm. pressure',type:'confirmed'}],
+    blurb:"Impact-induced rim uplift may have folded subsurface strata into anticline traps. The basin floor sits at Mars's lowest elevation — atmospheric pressure ~89% higher, an operational advantage for surface equipment.",
+    depthEst:'5–12 km', pressureEst:'150–360 MPa', riskLevel:'HIGH'},
+  { id:'arabia', name:'Arabia Terra plateau', lat:20, lng:10, coords:'20.0°N, 10.0°E', confidence:'MODERATE', color:'#4A8FD4', overallScore:55, viability:52,
+    scores:{'Trap geometry':58,'Cap rock integrity':62,'CO₂ feedstock':70,'Geothermal history':68,'Serpentinite evidence':30,'Surface accessibility':68},
+    dataTags:[{label:'Supervolcano calderas',type:'inferred'},{label:'Layered sedimentary',type:'confirmed'},{label:'Ancient stratigraphy',type:'confirmed'},{label:'Magmatic plumbing',type:'modelled'}],
+    blurb:'Ancient highland terrain with proposed supervolcanic history (2021 research). Extensive layered deposits suggest stratigraphic trap potential — a trap type rarely considered in Mars resource planning.',
+    depthEst:'3–8 km', pressureEst:'90–240 MPa', riskLevel:'MEDIUM'},
+  { id:'valles', name:'Valles Marineris rifts', lat:-10, lng:-60, coords:'10.0°S, 60.0°W', confidence:'SPECULATIVE', color:'#E0A030', overallScore:38, viability:33,
+    scores:{'Trap geometry':40,'Cap rock integrity':30,'CO₂ feedstock':65,'Geothermal history':50,'Serpentinite evidence':28,'Surface accessibility':30},
+    dataTags:[{label:'Deep crust exposure',type:'confirmed'},{label:'Fault migration paths',type:'inferred'},{label:'Fracture permeability',type:'modelled'}],
+    blurb:"Canyon walls expose km-scale crustal stratigraphy. Rift-flank faults aid migration but may compromise seal integrity — the same pathways that bring gas up could leak it out.",
+    depthEst:'6–15 km', pressureEst:'180–450 MPa', riskLevel:'VERY HIGH'},
+];
+
+// CRISM detections with mineral importance
+const CRISM_POINTS = [
+  { lat:21.2, lng:73.8, mineral:'Serpentinite', strength:0.95 },
+  { lat:20.6, lng:74.4, mineral:'Magnesite',    strength:0.78 },
+  { lat:20.0, lng:73.2, mineral:'Carbonate',    strength:0.82 },
+  { lat:21.8, lng:75.0, mineral:'Olivine',      strength:0.65 },
+  { lat:20.8, lng:72.8, mineral:'Serpentinite', strength:0.72 },
+  { lat:22.1, lng:73.5, mineral:'Carbonate',    strength:0.58 },
+  { lat:-1.0, lng:-98,  mineral:'Pyroxene',     strength:0.55 },
+  { lat:1.5,  lng:-101, mineral:'Pyroxene',     strength:0.60 },
+  { lat:2.2,  lng:-99,  mineral:'Olivine',      strength:0.48 },
+  { lat:22.0, lng:12.0, mineral:'Carbonate',    strength:0.50 },
+  { lat:18.5, lng:8.0,  mineral:'Sulfate',      strength:0.45 },
+  { lat:21.0, lng:6.0,  mineral:'Olivine',      strength:0.42 },
+  { lat:-44.0,lng:68.0, mineral:'Carbonate',    strength:0.55 },
+  { lat:-46.0,lng:72.0, mineral:'Pyroxene',     strength:0.40 },
+  { lat:-9.5, lng:-58,  mineral:'Olivine',      strength:0.50 },
+  { lat:-11.0,lng:-62,  mineral:'Pyroxene',     strength:0.38 },
+];
+
+const TECTONIC_LINES = [
+  { points:[[21.5,72],[20,74],[19,76],[20.5,78]], label:'Nili Fossae graben' },
+  { points:[[-8,-80],[-10,-60],[-12,-40],[-10,-20]], label:'Valles Marineris rift' },
+  { points:[[2,-95],[0,-100],[-2,-105]], label:'Tharsis rift zone' },
+  { points:[[-42,60],[-45,70],[-48,80]], label:'Hellas rim fault' },
+];
+
+let trekTileLoaded = false;
+
+function initMap() {
+  const map = L.map('map',{
+    center:[0,0], zoom:2, minZoom:1, maxZoom:6,
+    crs: L.CRS.EPSG4326,
+    maxBounds:[[-90,-180],[90,180]], maxBoundsViscosity:1.0,
+  });
+  // Explicit panes so vectors always render above image overlay
+  map.createPane('basemap'); map.getPane('basemap').style.zIndex = 100;
+  map.createPane('tectonic'); map.getPane('tectonic').style.zIndex = 300;
+  map.createPane('minerals'); map.getPane('minerals').style.zIndex = 400;
+  map.createPane('sites');    map.getPane('sites').style.zIndex    = 500;
+  map.createPane('labels');   map.getPane('labels').style.zIndex   = 600;
+
+  // ── Real MOLA basemap image overlay — exported from QGIS ───────────────────
+  const molaColorLayer = L.imageOverlay(
+    '../assets/mars_basemap.png',
+    [[-90, -180], [90, 180]],
+    { opacity: 1.0, attribution: 'NASA/USGS MOLA', pane: 'basemap' }
+  );
+  const canvasTiles = molaColorLayer;
+
+  // Canvas layer — show badge immediately since it's always available
+  const badge = document.getElementById('basemap-badge');
+  badge.textContent = 'MOLA COLOUR HILLSHADE · NASA ELEVATION MODEL';
+  badge.style.display = '';
+
+  molaColorLayer.addTo(map);
+
+  // ── Tectonic lines ────────────────────────────────────────────────────────
+  const tectonicGroup = L.layerGroup();
+  TECTONIC_LINES.forEach(t => {
+    L.polyline(t.points,{ pane:'tectonic', color:'#8A70D4', weight:1.5, opacity:0.7, dashArray:'4 3' })
+    .bindTooltip(`<div class="mars-tooltip">${t.label}</div>`,{sticky:true,className:'raw-tooltip'})
+    .addTo(tectonicGroup);
+  });
+  tectonicGroup.addTo(map);
+
+  // ── CRISM mineral points — coloured by CH₄ importance ───────────────────
+  const crismGroup = L.layerGroup();
+  CRISM_POINTS.forEach(p => {
+    const cfg = MINERAL_CONFIG[p.mineral] || MINERAL_CONFIG['Pyroxene'];
+    const baseR = cfg.radius;
+    const r = baseR + p.strength * 5;
+
+    // Outer glow ring
+    L.circleMarker([p.lat, p.lng],{
+      pane:'minerals',
+      radius: r + 6,
+      color: cfg.color,
+      weight: 1,
+      fillColor: cfg.color,
+      fillOpacity: 0.06 + p.strength * 0.08,
+      opacity: 0.2,
+    }).addTo(crismGroup);
+
+    // Main dot
+    L.circleMarker([p.lat, p.lng],{
+      pane:'minerals',
+      radius: r,
+      color: cfg.color,
+      weight: 1.5,
+      fillColor: cfg.color,
+      fillOpacity: cfg.opacity * (0.7 + p.strength*0.3),
+    })
+    .bindTooltip(`<div class="mars-tooltip">
+      <div style="color:${cfg.color};font-weight:500;margin-bottom:3px">${p.mineral}</div>
+      <div style="color:#5A6480;font-size:10px">CH₄ relevance: <b style="color:${cfg.color}">${cfg.importance}</b></div>
+      <div style="color:#5A6480;font-size:10px">Confidence: ${Math.round(p.strength*100)}%</div>
+      <div style="color:#3A4258;font-size:10px;margin-top:3px">${cfg.note}</div>
+    </div>`,{sticky:true,className:'raw-tooltip',offset:[10,0]})
+    .addTo(crismGroup);
+  });
+  crismGroup.addTo(map);
+
+  // ── Candidate site markers ─────────────────────────────────────────────────
+  const regionsGroup = L.layerGroup();
+  SITES.forEach(site => {
+    L.circleMarker([site.lat, site.lng],{
+      pane:'sites',
+      radius:28, color:site.color, weight:1,
+      fillColor:site.color, fillOpacity:0.05, opacity:0.2,
+    }).addTo(regionsGroup);
+
+    L.circleMarker([site.lat, site.lng],{
+      pane:'sites',
+      radius:10, color:site.color, weight:2.5,
+      fillColor:site.color, fillOpacity:0.6,
+    })
+    .bindTooltip(`<div class="mars-tooltip">
+      <b style="color:${site.color}">${site.name}</b><br>
+      Score: <b>${site.overallScore}/100</b> · ${site.confidence}<br>
+      <span style="color:#5A6480">Click to open detail</span>
+    </div>`,{sticky:true,className:'raw-tooltip',offset:[12,0]})
+    .on('click',() => selectSite(site.id))
+    .addTo(regionsGroup);
+
+    L.marker([site.lat+2.8, site.lng],{
+      icon: L.divIcon({
+        html:`<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:${site.color};white-space:nowrap;text-shadow:0 1px 6px #000,0 0 12px #000;letter-spacing:0.06em;pointer-events:none">${site.name.toUpperCase().slice(0,14)}</div>`,
+        iconSize:[200,16], iconAnchor:[100,0], className:'',
+      })
+    }).addTo(regionsGroup);
+  });
+  regionsGroup.addTo(map);
+
+  // ── Layer toggle ──────────────────────────────────────────────────────────
+  window.layerState = { basemap:true, regions:true, crism:true, tectonic:true };
+
+  window.toggleLayer = function(key) {
+    layerState[key] = !layerState[key];
+    document.getElementById('btn-'+key).classList.toggle('active', layerState[key]);
+
+    if (key === 'basemap') {
+      if (layerState.basemap) {
+        molaColorLayer.addTo(map);
+        if (trekTileLoaded) document.getElementById('basemap-badge').style.display='';
+      } else {
+        map.removeLayer(molaColorLayer);
+        if (map.hasLayer(canvasTiles)) map.removeLayer(canvasTiles);
+        document.getElementById('basemap-badge').style.display='none';
+      }
+    }
+    if (key === 'regions') {
+      if (layerState.regions) map.addLayer(regionsGroup);
+      else map.removeLayer(regionsGroup);
+    }
+    if (key === 'crism') {
+      if (layerState.crism) { map.addLayer(crismGroup); document.getElementById('mineral-legend').classList.add('visible'); }
+      else { map.removeLayer(crismGroup); document.getElementById('mineral-legend').classList.remove('visible'); }
+    }
+    if (key === 'tectonic') {
+      if (layerState.tectonic) map.addLayer(tectonicGroup);
+      else map.removeLayer(tectonicGroup);
+    }
+  };
+
+  map.on('mousemove', e => {
+    const la = e.latlng.lat.toFixed(2);
+    const lo = e.latlng.lng.toFixed(2);
+    document.getElementById('coord-status').textContent =
+      `CURSOR: ${la>0?la+'°N':Math.abs(la)+'°S'}, ${lo>0?lo+'°E':Math.abs(lo)+'°W'}`;
+  });
+
+  return map;
+}
+
+// ── MOLA elevation model (simplified from real data) ────────────────────────
+// Returns normalised elevation -1 (deepest) to +1 (highest)
+function marsElevation(lat, lon) {
+  let e = 0;
+
+  // Global bias: northern lowlands low, southern highlands medium-high
+  e += lat > 0 ? -0.25 : 0.15;
+
+  // Tharsis bulge: massive highland province
+  const dTharsis = dist(lat, lon, 5, -100);
+  if (dTharsis < 50) e += 0.7 * Math.exp(-dTharsis*dTharsis/800);
+
+  // Olympus Mons — tallest volcano
+  const dOlympus = dist(lat, lon, 18, -133);
+  if (dOlympus < 15) e += 0.9 * Math.exp(-dOlympus*dOlympus/60);
+
+  // Hellas basin — deepest impact crater
+  const dHellas = dist(lat, lon, -43, 70);
+  if (dHellas < 30) e -= 0.85 * Math.exp(-dHellas*dHellas/400);
+
+  // Argyre basin
+  const dArgyre = dist(lat, lon, -50, -43);
+  if (dArgyre < 20) e -= 0.55 * Math.exp(-dArgyre*dArgyre/200);
+
+  // Isidis basin
+  const dIsidis = dist(lat, lon, 12, 87);
+  if (dIsidis < 20) e -= 0.40 * Math.exp(-dIsidis*dIsidis/200);
+
+  // Valles Marineris rift — very low
+  if (lat > -15 && lat < -3 && lon > -100 && lon < -30) {
+    const vm_depth = Math.sin((lon+100)/70*Math.PI) * Math.cos((lat+9)/6*Math.PI);
+    e -= 0.45 * Math.max(0, vm_depth);
+  }
+
+  // Arabia Terra — ancient plateau, medium elevation
+  if (lat > 5 && lat < 35 && lon > -20 && lon < 60) {
+    e += 0.15 * Math.exp(-Math.pow(lat-20,2)/200 - Math.pow(lon-20,2)/800);
+  }
+
+  // Elysium volcanic province
+  const dElysium = dist(lat, lon, 25, 147);
+  if (dElysium < 20) e += 0.45 * Math.exp(-dElysium*dElysium/200);
+
+  // Nili Fossae — slightly elevated ancient terrain
+  const dNili = dist(lat, lon, 21, 74);
+  if (dNili < 12) e += 0.1 * Math.exp(-dNili*dNili/60);
+
+  // Northern polar cap
+  if (lat > 75) e += 0.3 * (lat-75)/15;
+
+  // Southern polar cap
+  if (lat < -80) e += 0.25 * (-lat-80)/10;
+
+  return Math.max(-1, Math.min(1, e));
+}
+
+function dist(lat1, lon1, lat2, lon2) {
+  return Math.sqrt((lat1-lat2)**2 + (lon1-lon2)**2);
+}
+
+// molaColor no longer used (DEM is greyscale now — colour applied in canvas tile directly)
+
+// ── Panel logic ──────────────────────────────────────────────────────────────
+let activeTab = 'detail', activeSite = null, radarChart = null;
+
+window.switchTab = function(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('ptab-'+tab).classList.add('active');
+  renderPanel();
+};
+
+window.selectSite = function(id) {
+  activeSite = SITES.find(s=>s.id===id);
+  activeTab = 'detail';
+  document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('ptab-detail').classList.add('active');
+  renderPanel();
+};
+
+function scoreColor(v) {
+  if (v>=75) return '#3DBFA0';
+  if (v>=55) return '#4A8FD4';
+  if (v>=35) return '#E0A030';
+  return '#D45050';
+}
+
+function renderPanel() {
+  const body = document.getElementById('panel-body');
+  if (radarChart) { radarChart.destroy(); radarChart=null; }
+
+  if (activeTab==='detail') {
+    if (!activeSite) {
+      body.innerHTML=`<div class="empty-state"><div class="empty-icon">◎</div><p>Click a candidate site on the map to load geologic scoring and data provenance.</p></div>`;
+      return;
+    }
+    const s = activeSite;
+    const sc = scoreColor(s.overallScore);
+    const riskColors={LOW:'#3DBFA0',MEDIUM:'#E0A030',HIGH:'#D45050','VERY HIGH':'#D45050'};
+    body.innerHTML=`
+      <div class="site-header">
+        <div class="site-eyebrow">CANDIDATE SITE · ${s.confidence} CONFIDENCE</div>
+        <div class="site-name">${s.name}</div>
+        <div class="site-coords">${s.coords}</div>
+      </div>
+      <div class="score-row">
+        <div class="score-cell"><div class="score-label">OVERALL SCORE</div><div class="score-val" style="color:${sc}">${s.overallScore}<span style="font-size:14px;color:#5A6480">/100</span></div><div class="score-sub">${s.confidence.toLowerCase()} confidence</div></div>
+        <div class="score-cell"><div class="score-label">VIABILITY INDEX</div><div class="score-val" style="color:${scoreColor(s.viability)}">${s.viability}<span style="font-size:14px;color:#5A6480">/100</span></div><div class="score-sub">drill feasibility</div></div>
+        <div class="score-cell"><div class="score-label">EST. DEPTH</div><div class="score-val" style="font-size:15px;color:#C8D0E0;margin-top:3px">${s.depthEst}</div><div class="score-sub">to reservoir</div></div>
+        <div class="score-cell"><div class="score-label">RISK LEVEL</div><div class="score-val" style="font-size:15px;color:${riskColors[s.riskLevel]};margin-top:3px">${s.riskLevel}</div><div class="score-sub">operational</div></div>
+      </div>
+      <div class="section"><div class="section-label">GEOLOGIC SUMMARY</div><p style="font-size:12px;line-height:1.7;color:#8899B8">${s.blurb}</p></div>
+      <div class="section">
+        <div class="section-label">SCORING BREAKDOWN</div>
+        ${Object.entries(s.scores).map(([k,v])=>`
+          <div class="score-bar-row">
+            <div class="sbar-label">${k}</div>
+            <div class="sbar-track"><div class="sbar-fill" style="width:${v}%;background:${scoreColor(v)}"></div></div>
+            <div class="sbar-num">${v}</div>
+          </div>`).join('')}
+      </div>
+      <div class="section"><div class="section-label">CAPABILITY RADAR</div><div class="radar-wrap"><canvas id="radar-canvas" width="260" height="170"></canvas></div></div>
+      <div class="section">
+        <div class="section-label">DATA PROVENANCE</div>
+        <div class="tag-row">${s.dataTags.map(t=>`<span class="tag ${t.type}">${t.label}</span>`).join('')}</div>
+        <p style="font-size:11px;color:#3A4258;margin-top:8px;line-height:1.6">confirmed = direct instrument detection · inferred = modelled from proxy data · modelled = physics simulation</p>
+      </div>
+      <div class="section"><div class="section-label">ESTIMATED RESERVOIR PRESSURE</div><div style="font-family:var(--mono);font-size:18px;color:#C8D0E0">${s.pressureEst}</div><div style="font-size:11px;color:#5A6480;margin-top:3px">Lithostatic estimate based on crustal density 2,900 kg/m³</div></div>
+    `;
+    setTimeout(()=>{
+      const ctx=document.getElementById('radar-canvas');
+      if (!ctx) return;
+      const labels=Object.keys(s.scores).map(l=>l.length>14?l.slice(0,13)+'…':l);
+      radarChart=new Chart(ctx,{type:'radar',data:{labels,datasets:[{data:Object.values(s.scores),backgroundColor:s.color+'22',borderColor:s.color,borderWidth:1.5,pointBackgroundColor:s.color,pointRadius:3}]},options:{responsive:false,plugins:{legend:{display:false}},scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:'#1E2535'},angleLines:{color:'#1E2535'},pointLabels:{font:{family:"'IBM Plex Mono'",size:9},color:'#5A6480'}}}}});
+    },50);
+
+  } else if (activeTab==='sites') {
+    const sorted=[...SITES].sort((a,b)=>b.overallScore-a.overallScore);
+    body.innerHTML=`
+      <div style="padding:12px 8px 4px;font-family:var(--mono);font-size:10px;color:#3A4258;letter-spacing:0.06em">RANKED BY OVERALL SCORE</div>
+      <div class="region-list">${sorted.map((s,i)=>`
+        <div class="region-item ${activeSite?.id===s.id?'active':''}" onclick="selectSite('${s.id}')">
+          <div style="font-family:var(--mono);font-size:11px;color:#3A4258;width:16px">${i+1}</div>
+          <div class="ri-swatch" style="background:${s.color}"></div>
+          <div class="ri-name" style="color:${activeSite?.id===s.id?'#fff':'#C8D0E0'}">${s.name}</div>
+          <div class="ri-score" style="color:${scoreColor(s.overallScore)}">${s.overallScore}</div>
+          <div class="ri-conf">${s.confidence.slice(0,3)}</div>
+        </div>`).join('')}
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid #1E2535;margin-top:8px">
+        <div style="font-family:var(--mono);font-size:10px;color:#3A4258;margin-bottom:10px;letter-spacing:0.06em">MINERAL IMPORTANCE TO CH₄</div>
+        ${Object.entries(MINERAL_CONFIG).map(([name,cfg])=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${cfg.color};flex-shrink:0;box-shadow:0 0 4px ${cfg.color}55"></div>
+            <div style="font-size:11px;color:#8899B8;flex:1">${name}</div>
+            <div style="font-family:var(--mono);font-size:10px;color:${cfg.color}">${cfg.importance}</div>
+          </div>`).join('')}
+      </div>`;
+
+  } else if (activeTab==='data') {
+    body.innerHTML=`
+      <div class="section"><div class="section-label">PRIMARY DATA SOURCES</div>
+        ${[
+          {name:'MOLA (Mars Orbiter Laser Altimeter)',inst:'MGS',type:'Topography / crustal thickness',url:'https://pds-geosciences.wustl.edu/missions/mgs/mola.html'},
+          {name:'CRISM (Compact Reconnaissance Imaging Spectrometer)',inst:'MRO',type:'Mineral detection · serpentinite, carbonate',url:'https://crism.jhuapl.edu/'},
+          {name:'HiRISE (High Resolution Imaging Science Exp.)',inst:'MRO',type:'Surface imagery 25 cm/px',url:'https://www.uahirise.org/'},
+          {name:'MARSIS (Mars Advanced Radar for Subsurface)',inst:'Mars Express',type:'Subsurface radar returns',url:'https://www.esa.int/Science_Exploration/Space_Science/Mars_Express/MARSIS'},
+          {name:'InSight seismic catalog',inst:'InSight',type:'Crustal velocity profiles',url:'https://pds-geosciences.wustl.edu/missions/insight/'},
+          {name:'MAVEN atmosphere data',inst:'MAVEN',type:'Atmospheric composition / CH₄ flux',url:'https://lasp.colorado.edu/home/maven/'},
+        ].map(d=>`
+          <div style="padding:10px 0;border-bottom:1px solid #1A1F2E">
+            <div style="font-size:12px;font-weight:500;color:#C8D0E0;margin-bottom:3px">${d.name}</div>
+            <div style="font-family:var(--mono);font-size:10px;color:#3DBFA0;margin-bottom:4px">${d.inst}</div>
+            <div style="font-size:11px;color:#5A6480;margin-bottom:6px">${d.type}</div>
+            <a href="${d.url}" target="_blank" style="font-family:var(--mono);font-size:10px;color:#4A8FD4;text-decoration:none">ACCESS PDS ARCHIVE →</a>
+          </div>`).join('')}
+      </div>
+      <div class="section"><div class="section-label">DATA PROCESSING NOTES</div>
+        <p style="font-size:11px;color:#5A6480;line-height:1.8">Mineral confidence derived from CRISM I/F spectral ratio (0.0–1.0). Scores weighted: trap geometry 25% · serpentinite evidence 20% · CO₂ feedstock 20% · cap rock 15% · geothermal history 15% · accessibility 5%. Depth estimates use crustal density ρ = 2,900 kg/m³. Pressure = ρgh where g = 3.72 m/s².</p>
+      </div>`;
+  }
+}
+
+const map = initMap();
+
+// Hide basemap badge by default — shows only if NASA Trek tiles actually load
+document.getElementById('basemap-badge').style.display = 'none';
+
+// Show elevation legend initially
+document.getElementById('elev-legend').classList.add('visible');
+
+renderPanel();
+</script>
+</body>
+</html>
