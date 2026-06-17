@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>mola_hillshade_4326.tif</name>
+    <name>Mars_MGS_MOLA_HILLSHADE_mosaic_global_463m.tif</name>
     <description></description>
     <Style>
       <ListStyle id="hideChildren">
