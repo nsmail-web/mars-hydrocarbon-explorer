@@ -72,7 +72,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .xsec-cap{padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--muted);border-top:1px solid var(--border);}
 
 /* Leaflet overrides */
-.leaflet-container{background:#060A10 !important;}
+.leaflet-container{background:#0A0D14 !important;}
 .leaflet-control-attribution{display:none !important;}
 .leaflet-control-zoom a{background:var(--surface) !important;color:var(--text) !important;border-color:var(--border2) !important;}
 .leaflet-popup-content-wrapper{background:var(--surface);border:1px solid var(--border2);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.5);}
@@ -431,7 +431,11 @@ function marsElev(lat,lon){
 function tileToLat(y,z){return Math.atan(Math.sinh(Math.PI*(1-2*y/Math.pow(2,z))))*180/Math.PI}
 
 function addDem(map){
-  const g=L.gridLayer({tileSize:256});
+  // Use static basemap image for reliability
+  L.imageOverlay('../assets/mars_basemap.png',[[-90,-180],[90,180]],{opacity:1.0,pane:'tilePane'}).addTo(map);
+}
+function _addDemCanvas_unused(map){
+  const g=L.gridLayer({tileSize:256,pane:'tilePane'});
   g.createTile=function(c){
     const cv=document.createElement('canvas');cv.width=cv.height=256;
     const ctx=cv.getContext('2d');
