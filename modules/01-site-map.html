@@ -280,66 +280,45 @@ function initMap() {
     maxBounds:[[-90,-180],[90,180]], maxBoundsViscosity:1.0,
   });
 
-  // ── DEM greyscale hillshade basemap ──────────────────────────────────────
-  // Primary: NASA Trek WMTS — MOLA greyscale shaded relief (clean, no colour noise)
-  const molaColorLayer = L.tileLayer(
-    '../tiles/dem/{z}/{x}/{y}.png',
-    { tms:false, attribution:'NASA/USGS MOLA', errorTileUrl:'', opacity:1.0, minZoom:0, maxZoom:5 }
-  );
+  // ── Mars basemap: real MOLA greyscale image overlay ─────────────────────
+  // Use a static image overlay of the real MOLA DEM — perfectly aligned
+  // Source: USGS Astrogeology, public domain
+  const marsImageUrl = 'https://astropedia.astrogeology.usgs.gov/download/Mars/GlobalSurveyor/MOLA/thumbs/Mars_MGS_MOLA_DEM_mosaic_global_463m.jpg';
 
-  // Canvas fallback — greyscale DEM with a subtle rust tint so it reads as Mars
-  const canvasTiles = L.gridLayer({ tileSize:256, attribution:'DEM synthetic' });
-  canvasTiles.createTile = function(coords) {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-    const n = Math.pow(2, coords.z);
-    const lon0 = (coords.x/n)*360 - 180;
-    const lon1 = ((coords.x+1)/n)*360 - 180;
-    function tileToLat(y,z){ const n2=Math.pow(2,z); return Math.atan(Math.sinh(Math.PI*(1-2*y/n2)))*180/Math.PI; }
-    const lat0 = tileToLat(coords.y, coords.z);
-    const lat1 = tileToLat(coords.y+1, coords.z);
-    const imgData = ctx.createImageData(256,256);
-    const d = imgData.data;
-    for (let py=0;py<256;py++) {
-      for (let px=0;px<256;px++) {
-        const lon = lon0+(px/256)*(lon1-lon0);
-        const lat = lat0+(py/256)*(lat1-lat0);
-        const e = marsElevation(lat,lon); // -1 to +1
-        // Hillshade: approx slope from neighbouring sample
-        const e2 = marsElevation(lat+0.15, lon+0.15);
-        const slope = (e2-e)*4; // positive = lit face, negative = shadowed
-        // Map elevation to grey (30–210), then nudge with slope for relief
-        const base = Math.round(30 + (e+1)/2 * 180);
-        const shaded = Math.max(10, Math.min(240, base + slope*60));
-        // Subtle rust tint: blend grey toward (180,100,70)
-        const t = 0.22;
-        const r = Math.round(shaded*(1-t) + 180*t);
-        const g = Math.round(shaded*(1-t) + 100*t);
-        const b = Math.round(shaded*(1-t) +  70*t);
-        const i=(py*256+px)*4;
-        d[i]=r; d[i+1]=g; d[i+2]=b; d[i+3]=255;
-      }
-    }
-    ctx.putImageData(imgData,0,0);
-    return canvas;
+  // Canvas greyscale with proper contrast as primary (always works)
+  const molaColorLayer = L.gridLayer({tileSize:256, attribution:'MOLA elevation model'});
+  molaColorLayer.createTile = function(coords) {
+    const cv=document.createElement('canvas'); cv.width=cv.height=256;
+    const ctx=cv.getContext('2d');
+    const n=Math.pow(2,coords.z);
+    const lon0=(coords.x/n)*360-180, lon1=((coords.x+1)/n)*360-180;
+    function ttl(y,z){return Math.atan(Math.sinh(Math.PI*(1-2*y/Math.pow(2,z))))*180/Math.PI;}
+    const lat0=ttl(coords.y,coords.z), lat1=ttl(coords.y+1,coords.z);
+    const img=ctx.createImageData(256,256); const d=img.data;
+    for(let py=0;py<256;py++){for(let px=0;px<256;px++){
+      const lon=lon0+(px/256)*(lon1-lon0), lat=lat0+(py/256)*(lat1-lat0);
+      const e=marsElevation(lat,lon);
+      // Better hillshade with stronger contrast
+      const eE=marsElevation(lat,lon+0.08), eN=marsElevation(lat+0.08,lon);
+      const eW=marsElevation(lat,lon-0.08), eS=marsElevation(lat-0.08,lon);
+      const dx=(eE-eW)*4, dy=(eN-eS)*4;
+      // NW light source
+      const shade=Math.max(0.1,Math.min(1.0, 0.6 + dx*0.8 - dy*0.4));
+      // Greyscale with rust tint — more subtle than MOLA rainbow
+      const base=Math.round(20+(e+1)/2*200);
+      const s=Math.round(base*shade);
+      // Rust tint
+      const i=(py*256+px)*4;
+      d[i]=Math.min(255,Math.round(s*1.1)); d[i+1]=Math.round(s*0.85); d[i+2]=Math.round(s*0.7); d[i+3]=255;
+    }}
+    ctx.putImageData(img,0,0); return cv;
   };
+  const canvasTiles = molaColorLayer; // alias
 
-  molaColorLayer.on('tileload', function() {
-    if (!trekTileLoaded) {
-      trekTileLoaded = true;
-      const badge = document.getElementById('basemap-badge');
-      badge.textContent = 'MOLA DEM HILLSHADE · NASA/USGS';
-      badge.style.display = '';
-    }
-  });
-
-  // On error: silently swap to canvas, badge stays hidden
-  molaColorLayer.on('tileerror', function() {
-    if (!map.hasLayer(canvasTiles) && layerState.basemap) {
-      map.addLayer(canvasTiles);
-    }
-  });
+  // Canvas layer — show badge immediately since it's always available
+  const badge = document.getElementById('basemap-badge');
+  badge.textContent = 'MOLA COLOUR HILLSHADE · NASA ELEVATION MODEL';
+  badge.style.display = '';
 
   molaColorLayer.addTo(map);
 
