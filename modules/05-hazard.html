@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hazard analysis · Module 05</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#0A0D12;--surface:#111520;--panel:#161B27;--border:#1E2535;
+  --border2:#263347;--text:#C8D4E4;--muted:#556070;--dim:#1A2030;
+  --accent:#E87040;--teal:#3DBFA0;--blue:#4A9FD4;--amber:#E0A030;
+  --red:#D45050;--green:#5DB870;--purple:#8A70D4;
+  --th:#E87040;--ni:#FF4422;
+  --mono:'IBM Plex Mono',monospace;--sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;}
+.nav{position:fixed;top:0;left:0;right:0;height:44px;background:rgba(10,13,18,0.97);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:20px;z-index:100;}
+.nav-logo{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.1em;}
+.nav-logo span{color:var(--muted);}
+.nav-links{display:flex;gap:8px;margin-left:auto;}
+.nav-link{font-family:var(--mono);font-size:10px;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border2);border-radius:3px;}
+.nav-link:hover{color:var(--text);}
+.page{max-width:1200px;margin:0 auto;padding:60px 24px 80px;}
+.hero{padding:40px 0 28px;border-bottom:1px solid var(--border);margin-bottom:36px;}
+.hero-tag{font-family:var(--mono);font-size:10px;color:var(--red);letter-spacing:0.12em;margin-bottom:10px;}
+.hero-title{font-size:30px;font-weight:600;color:#fff;letter-spacing:-0.02em;margin-bottom:8px;}
+.hero-sub{font-size:14px;color:var(--muted);max-width:680px;line-height:1.6;}
+
+/* Risk matrix */
+.matrix-wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+.matrix-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;}
+.mc-title{font-family:var(--mono);font-size:10px;letter-spacing:0.07em;margin-bottom:14px;}
+.mc-title.th{color:var(--th);}
+.mc-title.ni{color:var(--ni);}
+.risk-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.risk-row:last-child{margin-bottom:0;}
+.risk-name{font-size:12px;color:var(--text);width:150px;flex-shrink:0;}
+.risk-bar-wrap{flex:1;height:20px;background:var(--dim);border-radius:4px;overflow:hidden;}
+.risk-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-family:var(--mono);font-size:9px;letter-spacing:0.04em;transition:width 0.5s ease;}
+.r-critical{background:rgba(212,80,80,0.4);border:1px solid rgba(212,80,80,0.5);color:#F09090;}
+.r-high{background:rgba(232,112,64,0.35);border:1px solid rgba(232,112,64,0.5);color:#E8A080;}
+.r-medium{background:rgba(224,160,48,0.3);border:1px solid rgba(224,160,48,0.5);color:#D4C060;}
+.r-low{background:rgba(61,191,160,0.2);border:1px solid rgba(61,191,160,0.4);color:#70C8B0;}
+
+/* Hazard sections */
+.hazard-section{margin-bottom:36px;}
+.hz-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.hz-icon{font-size:24px;}
+.hz-title{font-size:20px;font-weight:500;color:#fff;}
+.hz-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+/* Compare cards */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.hz-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;}
+.hz-card-title{font-family:var(--mono);font-size:10px;letter-spacing:0.07em;margin-bottom:12px;}
+.hz-stat{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.hz-stat:last-of-type{border-bottom:none;}
+.hz-stat-label{font-size:12px;color:var(--muted);}
+.hz-stat-val{font-family:var(--mono);font-size:12px;font-weight:500;}
+
+/* Season chart */
+.season-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;}
+.sc-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.07em;margin-bottom:12px;}
+.chart-wrap{height:220px;position:relative;}
+
+/* SVG dust diagram */
+.dust-svg-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;}
+.dust-cap{padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--muted);border-top:1px solid var(--border);}
+
+/* Radiation depth profile */
+.rad-svg-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;}
+
+/* Mitigation cards */
+.mit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.mit-card{background:var(--dim);border-radius:7px;padding:12px;border:1px solid var(--border2);}
+.mit-title{font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.mit-desc{font-size:11px;color:var(--muted);line-height:1.6;}
+.mit-tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;margin-top:6px;}
+
+/* Alert box */
+.alert{border-radius:7px;padding:14px 18px;margin-bottom:16px;}
+.alert-crit{background:rgba(212,80,80,0.07);border:1px solid rgba(212,80,80,0.25);}
+.alert-warn{background:rgba(232,112,64,0.07);border:1px solid rgba(232,112,64,0.25);}
+.alert-ok{background:rgba(61,191,160,0.06);border:1px solid rgba(61,191,160,0.2);}
+.alert-label{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;margin-bottom:6px;}
+.alert-label.crit{color:var(--red);}
+.alert-label.warn{color:var(--accent);}
+.alert-label.ok{color:var(--teal);}
+.alert-body{font-size:12px;line-height:1.7;}
+.alert-body.crit{color:#AA8888;}
+.alert-body.warn{color:#AA9080;}
+.alert-body.ok{color:#8aaa90;}
+.alert-body strong{font-weight:500;}
+
+/* Overall risk score */
+.risk-score-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+.rs-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center;}
+.rs-site{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;margin-bottom:8px;}
+.rs-site.th{color:var(--th);}
+.rs-site.ni{color:var(--ni);}
+.rs-score{font-family:var(--mono);font-size:40px;font-weight:500;line-height:1;margin-bottom:4px;}
+.rs-label{font-size:12px;color:var(--muted);}
+.rs-breakdown{margin-top:14px;text-align:left;}
+.rs-item{display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px solid var(--border);}
+.rs-item:last-child{border-bottom:none;}
+.rs-item-label{color:var(--muted);}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-logo">◈ MARS-HSE <span>/ MODULE 05</span></div>
+  <div class="nav-links">
+    <a class="nav-link" href="01-site-map.html">← SITE MAP</a>
+    <a class="nav-link" href="04-infrastructure.html">← MODULE 04</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="hero">
+    <div class="hero-tag">◈ HAZARD ANALYSIS · DUST STORMS + RADIATION</div>
+    <h1 class="hero-title">Mission hazard dashboard</h1>
+    <p class="hero-sub">Dust storm frequency, opacity, power loss modelling, and radiation flux analysis for robotic precursor missions at Tharsis dome complex and Nili Fossae trough. Data from MAVEN, MCS, and InSight.</p>
+  </div>
+
+  <!-- Overall risk scores -->
+  <div class="risk-score-grid">
+    <div class="rs-card">
+      <div class="rs-site th">THARSIS DOME COMPLEX</div>
+      <div class="rs-score" style="color:var(--amber)">6.4</div>
+      <div class="rs-label">overall hazard score /10</div>
+      <div class="rs-breakdown">
+        <div class="rs-item"><span class="rs-item-label">Dust storm risk</span><span style="color:var(--red);font-family:var(--mono);font-size:11px">8.1 · HIGH</span></div>
+        <div class="rs-item"><span class="rs-item-label">Radiation exposure</span><span style="color:var(--amber);font-family:var(--mono);font-size:11px">6.2 · MODERATE</span></div>
+        <div class="rs-item"><span class="rs-item-label">Terrain stability</span><span style="color:var(--teal);font-family:var(--mono);font-size:11px">4.1 · LOW</span></div>
+        <div class="rs-item"><span class="rs-item-label">Thermal cycling</span><span style="color:var(--amber);font-family:var(--mono);font-size:11px">6.8 · MODERATE</span></div>
+        <div class="rs-item"><span class="rs-item-label">Power availability</span><span style="color:var(--red);font-family:var(--mono);font-size:11px">7.5 · HIGH</span></div>
+      </div>
+    </div>
+    <div class="rs-card">
+      <div class="rs-site ni">NILI FOSSAE TROUGH</div>
+      <div class="rs-score" style="color:var(--amber)">5.2</div>
+      <div class="rs-label">overall hazard score /10</div>
+      <div class="rs-breakdown">
+        <div class="rs-item"><span class="rs-item-label">Dust storm risk</span><span style="color:var(--amber);font-family:var(--mono);font-size:11px">6.5 · MODERATE</span></div>
+        <div class="rs-item"><span class="rs-item-label">Radiation exposure</span><span style="color:var(--amber);font-family:var(--mono);font-size:11px">6.0 · MODERATE</span></div>
+        <div class="rs-item"><span class="rs-item-label">Terrain stability</span><span style="color:var(--amber);font-family:var(--mono);font-size:11px">6.2 · MODERATE</span></div>
+        <div class="rs-item"><span class="rs-item-label">Thermal cycling</span><span style="color:var(--teal);font-family:var(--mono);font-size:11px">4.8 · LOW</span></div>
+        <div class="rs-item"><span class="rs-item-label">Power availability</span><span style="color:var(--amber);font-family:var(--mono);font-size:11px">5.8 · MODERATE</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Risk matrix -->
+  <div class="matrix-wrap">
+    <div class="matrix-card">
+      <div class="mc-title th">THARSIS · RISK MATRIX</div>
+      <div class="risk-row"><div class="risk-name">Global dust storm</div><div class="risk-bar-wrap"><div class="risk-bar r-critical" style="width:90%">CRITICAL</div></div></div>
+      <div class="risk-row"><div class="risk-name">Regional dust storm</div><div class="risk-bar-wrap"><div class="risk-bar r-high" style="width:80%">HIGH</div></div></div>
+      <div class="risk-row"><div class="risk-name">Solar particle event</div><div class="risk-bar-wrap"><div class="risk-bar r-high" style="width:65%">HIGH</div></div></div>
+      <div class="risk-row"><div class="risk-name">GCR cumulative dose</div><div class="risk-bar-wrap"><div class="risk-bar r-medium" style="width:60%">MEDIUM</div></div></div>
+      <div class="risk-row"><div class="risk-name">Dust devil damage</div><div class="risk-bar-wrap"><div class="risk-bar r-medium" style="width:50%">MEDIUM</div></div></div>
+      <div class="risk-row"><div class="risk-name">Thermal delta</div><div class="risk-bar-wrap"><div class="risk-bar r-medium" style="width:65%">MEDIUM</div></div></div>
+      <div class="risk-row"><div class="risk-name">Slope failure</div><div class="risk-bar-wrap"><div class="risk-bar r-low" style="width:30%">LOW</div></div></div>
+    </div>
+    <div class="matrix-card">
+      <div class="mc-title ni">NILI FOSSAE · RISK MATRIX</div>
+      <div class="risk-row"><div class="risk-name">Global dust storm</div><div class="risk-bar-wrap"><div class="risk-bar r-high" style="width:70%">HIGH</div></div></div>
+      <div class="risk-row"><div class="risk-name">Regional dust storm</div><div class="risk-bar-wrap"><div class="risk-bar r-medium" style="width:55%">MEDIUM</div></div></div>
+      <div class="risk-row"><div class="risk-name">Solar particle event</div><div class="risk-bar-wrap"><div class="risk-bar r-high" style="width:65%">HIGH</div></div></div>
+      <div class="risk-row"><div class="risk-name">GCR cumulative dose</div><div class="risk-bar-wrap"><div class="risk-bar r-medium" style="width:58%">MEDIUM</div></div></div>
+      <div class="risk-row"><div class="risk-name">Dust devil damage</div><div class="risk-bar-wrap"><div class="risk-bar r-low" style="width:35%">LOW</div></div></div>
+      <div class="risk-row"><div class="risk-name">Thermal delta</div><div class="risk-bar-wrap"><div class="risk-bar r-low" style="width:40%">LOW</div></div></div>
+      <div class="risk-row"><div class="risk-name">Slope failure / graben</div><div class="risk-bar-wrap"><div class="risk-bar r-medium" style="width:58%">MEDIUM</div></div></div>
+    </div>
+  </div>
+
+  <!-- DUST STORMS -->
+  <div class="hazard-section">
+    <div class="hz-header">
+      <div class="hz-icon">🌪</div>
+      <div>
+        <div class="hz-title">Dust storm hazard</div>
+        <div class="hz-sub">Mars Climate Sounder (MCS) + MARCI dust opacity data · MY 24–36</div>
+      </div>
+    </div>
+
+    <div class="alert alert-crit">
+      <div class="alert-label crit">⚠ CRITICAL MISSION RISK</div>
+      <div class="alert-body crit">Global dust storms (GDS) occur on Mars roughly every 2–3 Mars years (3.8–5.7 Earth years). During a GDS, atmospheric opacity (tau) reaches 5–8, reducing solar irradiance at the surface by <strong>up to 99%</strong>. Solar-powered systems fail within days. The 2018 GDS killed the Opportunity rover after 15 years of operation. Any Mars surface mission must plan for 3–6 month power blackouts.</div>
+    </div>
+
+    <div class="compare-grid">
+      <div class="hz-card">
+        <div class="hz-card-title" style="color:var(--th)">THARSIS · DUST STORM PROFILE</div>
+        <div class="hz-stat"><span class="hz-stat-label">Elevation</span><span class="hz-stat-val" style="color:var(--th)">+8,000 m (volcanic plateau)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Dust loading (non-storm)</span><span class="hz-stat-val">tau 0.3–0.6</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Dust loading (GDS)</span><span class="hz-stat-val" style="color:var(--red)">tau 5–8</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">GDS solar loss</span><span class="hz-stat-val" style="color:var(--red)">85–99%</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Regional storm frequency</span><span class="hz-stat-val" style="color:var(--amber)">4–6 per MY</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Dust devil frequency</span><span class="hz-stat-val" style="color:var(--amber)">HIGH (low pressure)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Tharsis elevation advantage</span><span class="hz-stat-val" style="color:var(--teal)">Above dust layer base</span></div>
+      </div>
+      <div class="hz-card">
+        <div class="hz-card-title" style="color:var(--ni)">NILI FOSSAE · DUST STORM PROFILE</div>
+        <div class="hz-stat"><span class="hz-stat-label">Elevation</span><span class="hz-stat-val" style="color:var(--ni)">+1,500 m (highland rim)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Dust loading (non-storm)</span><span class="hz-stat-val">tau 0.4–0.7</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Dust loading (GDS)</span><span class="hz-stat-val" style="color:var(--red)">tau 4–7</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">GDS solar loss</span><span class="hz-stat-val" style="color:var(--amber)">80–95%</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Regional storm frequency</span><span class="hz-stat-val" style="color:var(--teal)">2–3 per MY</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Dust devil frequency</span><span class="hz-stat-val" style="color:var(--teal)">LOW (graben shelter)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Proximity to storm origin</span><span class="hz-stat-val" style="color:var(--amber)">Near Hellas source</span></div>
+      </div>
+    </div>
+
+    <!-- Dust opacity SVG diagram -->
+    <div class="dust-svg-card">
+      <svg width="100%" viewBox="0 0 680 220" style="display:block;background:#080C14">
+        <defs>
+          <linearGradient id="dust-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A0D18"/><stop offset="100%" stop-color="#080C14"/></linearGradient>
+        </defs>
+        <!-- Axes -->
+        <line x1="60" y1="20" x2="60" y2="180" stroke="#1E2535" stroke-width="1"/>
+        <line x1="60" y1="180" x2="660" y2="180" stroke="#1E2535" stroke-width="1"/>
+        <!-- Y labels (tau) -->
+        <text x="54" y="184" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">0</text>
+        <text x="54" y="148" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">2</text>
+        <text x="54" y="112" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">4</text>
+        <text x="54" y="76" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">6</text>
+        <text x="54" y="40" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">8 τ</text>
+        <!-- Grid -->
+        <line x1="60" y1="148" x2="660" y2="148" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <line x1="60" y1="112" x2="660" y2="112" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <line x1="60" y1="76" x2="660" y2="76" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <!-- X labels (Mars Years) -->
+        <text x="110" y="193" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">MY24</text>
+        <text x="210" y="193" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">MY26</text>
+        <text x="310" y="193" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">MY28</text>
+        <text x="410" y="193" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">MY30</text>
+        <text x="510" y="193" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">MY32</text>
+        <text x="610" y="193" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">MY34</text>
+        <!-- GDS shading zones -->
+        <rect x="120" y="30" width="30" height="150" fill="rgba(212,80,80,0.1)" stroke="rgba(212,80,80,0.3)" stroke-width="0.5"/>
+        <rect x="285" y="35" width="25" height="145" fill="rgba(212,80,80,0.1)" stroke="rgba(212,80,80,0.3)" stroke-width="0.5"/>
+        <rect x="468" y="25" width="35" height="155" fill="rgba(212,80,80,0.15)" stroke="rgba(212,80,80,0.4)" stroke-width="0.5"/>
+        <!-- GDS labels -->
+        <text x="135" y="25" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="7" fill="#D45050">GDS</text>
+        <text x="297" y="30" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="7" fill="#D45050">GDS</text>
+        <text x="485" y="20" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="7" fill="#D45050">GDS 2018</text>
+        <!-- Tharsis dust curve -->
+        <polyline points="65,170 90,165 110,162 120,60 150,55 165,168 200,162 220,158 240,165 250,155 260,162 285,55 310,50 325,165 360,160 380,162 400,158 430,165 460,160 468,42 503,38 510,168 540,165 560,162 580,165 600,160 630,162 660,165" fill="none" stroke="#E87040" stroke-width="1.5"/>
+        <!-- Nili dust curve -->
+        <polyline points="65,172 90,168 110,165 120,65 150,62 165,170 200,166 220,163 240,168 250,160 260,166 285,62 310,58 325,168 360,164 380,166 400,162 430,168 460,163 468,50 503,45 510,170 540,168 560,165 580,168 600,164 630,166 660,168" fill="none" stroke="#FF4422" stroke-width="1.5" stroke-dasharray="5 2"/>
+        <!-- Legend -->
+        <line x1="68" y1="210" x2="90" y2="210" stroke="#E87040" stroke-width="1.5"/>
+        <text x="94" y="213" font-family="IBM Plex Mono,monospace" font-size="8" fill="#E87040">Tharsis</text>
+        <line x1="160" y1="210" x2="182" y2="210" stroke="#FF4422" stroke-width="1.5" stroke-dasharray="5 2"/>
+        <text x="186" y="213" font-family="IBM Plex Mono,monospace" font-size="8" fill="#FF4422">Nili Fossae</text>
+        <text x="340" y="213" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#3A4A5A">ATMOSPHERIC DUST OPACITY (TAU) · SCHEMATIC BASED ON MCS DATA MY24–36</text>
+      </svg>
+      <div class="dust-cap">Schematic dust opacity curves based on MCS climatological data. Global dust storms (GDS) drive tau to 5–8, causing near-total solar panel failure. Tharsis shows higher baseline tau due to low-pressure dust devil activity; Nili Fossae is partially sheltered by the graben rim but sits closer to the Hellas/Argyre storm generation region.</div>
+    </div>
+
+    <!-- Power loss chart -->
+    <div class="season-card">
+      <div class="sc-title">ESTIMATED SOLAR POWER AVAILABILITY BY SEASON (% of max)</div>
+      <div class="chart-wrap"><canvas id="power-chart"></canvas></div>
+    </div>
+
+    <div class="alert alert-warn">
+      <div class="alert-label warn">⚡ POWER STRATEGY REQUIREMENT</div>
+      <div class="alert-body warn">Solar power alone is insufficient for either site. <strong>Recommended: RTG (Radioisotope Thermoelectric Generator) as primary power</strong> for drill rig and critical systems, with solar panels as supplementary. RTGs produce ~100W continuously regardless of dust opacity. Multi-Mission RTG (MMRTG) provides 110W beginning-of-mission — 2 units minimum per site. Estimated cost: $80M per MMRTG.</div>
+    </div>
+
+    <div class="mit-grid">
+      <div class="mit-card">
+        <div class="mit-title">RTG primary power</div>
+        <div class="mit-desc">2× MMRTG per site, 110W each. Provides baseline power through any dust event indefinitely.</div>
+        <span class="mit-tag" style="background:rgba(61,191,160,0.1);color:var(--teal);border:1px solid rgba(61,191,160,0.3)">CRITICAL</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Dust wiper systems</div>
+        <div class="mit-desc">Active electrostatic dust removal on all solar panels. Passive wipers on optical sensors. Reduces non-storm tau impact by ~40%.</div>
+        <span class="mit-tag" style="background:rgba(224,160,48,0.1);color:var(--amber);border:1px solid rgba(224,160,48,0.3)">RECOMMENDED</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Storm hibernation protocol</div>
+        <div class="mit-desc">Automated shutdown of non-critical systems when tau exceeds 2.0. Drill operations suspended. RTG maintains data relay and thermal systems only.</div>
+        <span class="mit-tag" style="background:rgba(224,160,48,0.1);color:var(--amber);border:1px solid rgba(224,160,48,0.3)">REQUIRED</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Sealed instrument enclosures</div>
+        <div class="mit-desc">All precision instruments in dust-sealed enclosures. Dust particle size on Mars 1–3 μm — fine enough to penetrate standard IP65 seals.</div>
+        <span class="mit-tag" style="background:rgba(61,191,160,0.1);color:var(--teal);border:1px solid rgba(61,191,160,0.3)">CRITICAL</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Elevated panel mounts</div>
+        <div class="mit-desc">Solar panels on 3m masts above surface dust accumulation layer. Nili Fossae graben floor excluded — panels on rim only.</div>
+        <span class="mit-tag" style="background:rgba(74,159,212,0.1);color:var(--blue);border:1px solid rgba(74,159,212,0.3)">DESIGN FEATURE</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Dust storm early warning</div>
+        <div class="mit-desc">MCS-equivalent orbital monitor for real-time tau measurement. 48-hour advance warning triggers hibernation protocol automatically.</div>
+        <span class="mit-tag" style="background:rgba(74,159,212,0.1);color:var(--blue);border:1px solid rgba(74,159,212,0.3)">REQUIRED</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RADIATION -->
+  <div class="hazard-section">
+    <div class="hz-header">
+      <div class="hz-icon">☢</div>
+      <div>
+        <div class="hz-title">Radiation hazard</div>
+        <div class="hz-sub">MAVEN SWIA + RAD instrument data · GCR + SPE modelling</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <div class="alert-label warn">⚠ CHRONIC MISSION RISK</div>
+      <div class="alert-body warn">Mars has no global magnetic field and a thin atmosphere (~0.6% of Earth's). The surface receives <strong>~0.64 mSv/day</strong> from galactic cosmic rays (GCR) — about 25× Earth sea-level dose. Solar particle events (SPEs) can spike dose rates to lethal levels within hours. For robotic missions this primarily affects electronics reliability — total ionising dose (TID) limits component lifetime.</div>
+    </div>
+
+    <div class="compare-grid">
+      <div class="hz-card">
+        <div class="hz-card-title" style="color:var(--th)">THARSIS · RADIATION PROFILE</div>
+        <div class="hz-stat"><span class="hz-stat-label">Surface GCR dose</span><span class="hz-stat-val">~0.64 mSv/day</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Annual GCR dose</span><span class="hz-stat-val" style="color:var(--amber)">234 mSv/yr</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">SPE peak dose rate</span><span class="hz-stat-val" style="color:var(--red)">Up to 2,000 mSv/hr</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Electronics TID limit</span><span class="hz-stat-val">100 krad (std) · 1 Mrad (rad-hard)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Est. electronics lifetime</span><span class="hz-stat-val" style="color:var(--amber)">5–8 yrs (rad-hard)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Altitude shielding benefit</span><span class="hz-stat-val" style="color:var(--red)">Minimal (thin atm.)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Tharsis elevation factor</span><span class="hz-stat-val" style="color:var(--red)">Higher elevation = more exposure</span></div>
+      </div>
+      <div class="hz-card">
+        <div class="hz-card-title" style="color:var(--ni)">NILI FOSSAE · RADIATION PROFILE</div>
+        <div class="hz-stat"><span class="hz-stat-label">Surface GCR dose</span><span class="hz-stat-val">~0.62 mSv/day</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Annual GCR dose</span><span class="hz-stat-val" style="color:var(--amber)">226 mSv/yr</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">SPE peak dose rate</span><span class="hz-stat-val" style="color:var(--red)">Up to 2,000 mSv/hr</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Electronics TID limit</span><span class="hz-stat-val">100 krad (std) · 1 Mrad (rad-hard)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Est. electronics lifetime</span><span class="hz-stat-val" style="color:var(--teal)">6–9 yrs (rad-hard)</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Graben sheltering</span><span class="hz-stat-val" style="color:var(--teal)">Partial — rim provides 15–20° shield</span></div>
+        <div class="hz-stat"><span class="hz-stat-label">Lower elevation benefit</span><span class="hz-stat-val" style="color:var(--teal)">~3% more atmospheric column</span></div>
+      </div>
+    </div>
+
+    <!-- Radiation depth profile SVG -->
+    <div class="rad-svg-card">
+      <svg width="100%" viewBox="0 0 680 240" style="display:block;background:#080C14">
+        <!-- Axes -->
+        <line x1="70" y1="20" x2="70" y2="200" stroke="#1E2535" stroke-width="1"/>
+        <line x1="70" y1="200" x2="660" y2="200" stroke="#1E2535" stroke-width="1"/>
+        <!-- Y: Depth 0 to 5m -->
+        <text x="64" y="204" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">0</text>
+        <text x="64" y="164" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">1m</text>
+        <text x="64" y="124" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">2m</text>
+        <text x="64" y="84" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">3m</text>
+        <text x="64" y="44" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">4m depth</text>
+        <!-- X: Dose rate 0-700 mSv/day -->
+        <text x="70" y="215" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">0</text>
+        <text x="220" y="215" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">150</text>
+        <text x="370" y="215" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">300</text>
+        <text x="520" y="215" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">450</text>
+        <text x="640" y="215" font-family="IBM Plex Mono,monospace" font-size="8" fill="#556070">600 mSv/day</text>
+        <!-- Grid -->
+        <line x1="70" y1="164" x2="660" y2="164" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <line x1="70" y1="124" x2="660" y2="124" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <line x1="70" y1="84" x2="660" y2="84" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <line x1="220" y1="20" x2="220" y2="200" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <line x1="370" y1="20" x2="370" y2="200" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <line x1="520" y1="20" x2="520" y2="200" stroke="#1E2535" stroke-width="0.5" stroke-dasharray="3 3"/>
+        <!-- Surface dose spike (SPE) annotation -->
+        <rect x="600" y="25" width="55" height="180" fill="rgba(212,80,80,0.06)" stroke="rgba(212,80,80,0.2)" stroke-width="0.5"/>
+        <text x="627" y="22" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="7" fill="#D45050">SPE</text>
+        <!-- GCR surface line -->
+        <line x1="71" y1="30" x2="71" y2="200" stroke="#C8D4E4" stroke-width="0.5" stroke-dasharray="2 2"/>
+        <!-- Regolith shielding curve (GCR) -->
+        <path d="M 71,200 C 150,198 180,180 200,160 220,140 230,120 240,100 250,85 260,72 280,55 310,38 350,30 400,26 450,24 500,23 600,22" fill="none" stroke="#4A9FD4" stroke-width="2"/>
+        <!-- Soil layer shading -->
+        <polygon points="70,200 71,200 71,30 200,160 240,100 280,55 350,30 600,22 660,22 660,200" fill="rgba(74,159,212,0.06)" stroke="none"/>
+        <!-- Annotations -->
+        <text x="80" y="196" font-family="IBM Plex Mono,monospace" font-size="8" fill="#C8D4E4">640 mSv/day surface</text>
+        <text x="82" y="135" font-family="IBM Plex Mono,monospace" font-size="8" fill="#4A9FD4">Shielded by regolith</text>
+        <text x="300" y="50" font-family="IBM Plex Mono,monospace" font-size="8" fill="#4A9FD4">~20 mSv/day at 3m</text>
+        <text x="450" y="30" font-family="IBM Plex Mono,monospace" font-size="8" fill="#4A9FD4">~5 mSv/day at 4m</text>
+        <!-- Drill equipment depth markers -->
+        <line x1="70" y1="124" x2="90" y2="124" stroke="#E87040" stroke-width="1"/>
+        <text x="94" y="127" font-family="IBM Plex Mono,monospace" font-size="8" fill="#E87040">Drill electronics at 2m — rad-hard required</text>
+        <!-- Legend -->
+        <line x1="75" y1="230" x2="95" y2="230" stroke="#4A9FD4" stroke-width="2"/>
+        <text x="99" y="233" font-family="IBM Plex Mono,monospace" font-size="8" fill="#4A9FD4">GCR dose vs depth (regolith shielding)</text>
+        <text x="340" y="233" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#3A4A5A">RADIATION DOSE vs BURIAL DEPTH · BOTH SITES SIMILAR</text>
+      </svg>
+      <div style="padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--muted);border-top:1px solid var(--border)">GCR dose falls rapidly with regolith depth. Surface electronics experience 640 mSv/day; burying electronics at 2m reduces dose to ~120 mSv/day. Drill downhole tools at 5+ m depth effectively shielded. SPE events spike surface dose — short duration (hours to days) but can exceed 2,000 mSv/hr.</div>
+    </div>
+
+    <div class="mit-grid">
+      <div class="mit-card">
+        <div class="mit-title">Radiation-hardened electronics</div>
+        <div class="mit-desc">All processors, memory, and sensors specified to ≥1 Mrad TID. Standard commercial components rated ~10 krad — would fail within weeks.</div>
+        <span class="mit-tag" style="background:rgba(61,191,160,0.1);color:var(--teal);border:1px solid rgba(61,191,160,0.3)">CRITICAL</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Buried electronics vault</div>
+        <div class="mit-desc">Primary computing buried 1–2m below surface inside a steel vault. Regolith provides ~15× dose reduction vs surface. Nili graben walls provide additional partial shielding.</div>
+        <span class="mit-tag" style="background:rgba(61,191,160,0.1);color:var(--teal);border:1px solid rgba(61,191,160,0.3)">CRITICAL</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">SPE storm shelter</div>
+        <div class="mit-desc">MAVEN-derived SPE early warning (15–60 min lead time). Non-critical systems powered down. Electronics vault provides passive shielding during events.</div>
+        <span class="mit-tag" style="background:rgba(224,160,48,0.1);color:var(--amber);border:1px solid rgba(224,160,48,0.3)">REQUIRED</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Redundant flight computers</div>
+        <div class="mit-desc">Triple-redundant voting architecture. If one processor accumulates bit errors from radiation damage, the other two override. Mars rover heritage design.</div>
+        <span class="mit-tag" style="background:rgba(224,160,48,0.1);color:var(--amber);border:1px solid rgba(224,160,48,0.3)">REQUIRED</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Annual electronics refresh</div>
+        <div class="mit-desc">Mission design includes spare electronics modules launched with Phase 2 hardware for on-site replacement of radiation-damaged components after year 5.</div>
+        <span class="mit-tag" style="background:rgba(74,159,212,0.1);color:var(--blue);border:1px solid rgba(74,159,212,0.3)">DESIGN FEATURE</span>
+      </div>
+      <div class="mit-card">
+        <div class="mit-title">Nili graben advantage</div>
+        <div class="mit-desc">The graben rim walls at Nili Fossae provide 15–20° of geometric shielding for low-elevation SPE particles. Estimated 8–12% dose reduction vs open plains.</div>
+        <span class="mit-tag" style="background:rgba(255,68,34,0.1);color:var(--ni);border:1px solid rgba(255,68,34,0.3)">NILI ADVANTAGE</span>
+      </div>
+    </div>
+
+    <div class="alert alert-ok">
+      <div class="alert-label ok">◆ RADIATION CONCLUSION</div>
+      <div class="alert-body ok">Radiation hazard is <strong>nearly identical at both sites</strong> — the ~3% difference in atmospheric column between Tharsis (higher elevation) and Nili Fossae is negligible. Both require full rad-hard electronics specification. The primary radiation mitigation is the same for both: bury computing hardware, use rad-hard components, and maintain real-time SPE monitoring via orbital assets. <strong>Neither site has a significant radiation advantage — design spec dominates over geography.</strong></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Power availability chart
+new Chart(document.getElementById('power-chart'), {
+  type: 'bar',
+  data: {
+    labels: ['Spring\n(Ls 0–90)', 'Summer\n(Ls 90–180)', 'Autumn\n(Ls 180–270)', 'Winter\n(Ls 270–360)', 'During GDS'],
+    datasets: [
+      { label: 'Tharsis', data: [72, 65, 45, 80, 5], backgroundColor: 'rgba(232,112,64,0.6)', borderColor: '#E87040', borderWidth: 1, borderRadius: 4 },
+      { label: 'Nili Fossae', data: [76, 70, 52, 82, 8], backgroundColor: 'rgba(255,68,34,0.5)', borderColor: '#FF4422', borderWidth: 1, borderRadius: 4 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#C8D4E4', font: { family: 'IBM Plex Mono', size: 11 } } },
+      tooltip: { backgroundColor: '#111520', titleColor: '#C8D4E4', bodyColor: '#556070', borderColor: '#263347', borderWidth: 1,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}% of peak solar` }
+      }
+    },
+    scales: {
+      x: { grid: { color: '#1E2535' }, ticks: { color: '#556070', font: { family: 'IBM Plex Mono', size: 9 } } },
+      y: { grid: { color: '#1E2535' }, max: 100, ticks: { color: '#556070', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v+'%' },
+           title: { display: true, text: '% of peak solar power', color: '#556070', font: { family: 'IBM Plex Mono', size: 10 } } }
+    }
+  }
+});
+</script>
+</body>
+</html>

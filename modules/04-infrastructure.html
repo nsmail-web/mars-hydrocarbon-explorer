@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infrastructure planner · Module 04</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#0A0D12;--surface:#111520;--panel:#161B27;--border:#1E2535;
+  --border2:#263347;--text:#C8D4E4;--muted:#556070;--dim:#1A2030;
+  --accent:#E87040;--teal:#3DBFA0;--blue:#4A9FD4;--amber:#E0A030;
+  --red:#D45050;--green:#5DB870;--purple:#8A70D4;
+  --th:#E87040;--ni:#FF4422;
+  --mono:'IBM Plex Mono',monospace;--sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;}
+.nav{position:fixed;top:0;left:0;right:0;height:44px;background:rgba(10,13,18,0.97);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:20px;z-index:100;}
+.nav-logo{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.1em;}
+.nav-logo span{color:var(--muted);}
+.nav-links{display:flex;gap:8px;margin-left:auto;}
+.nav-link{font-family:var(--mono);font-size:10px;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border2);border-radius:3px;}
+.nav-link:hover{color:var(--text);}
+.page{max-width:1200px;margin:0 auto;padding:60px 24px 80px;}
+.hero{padding:40px 0 28px;border-bottom:1px solid var(--border);margin-bottom:36px;}
+.hero-tag{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:0.12em;margin-bottom:10px;}
+.hero-title{font-size:30px;font-weight:600;color:#fff;letter-spacing:-0.02em;margin-bottom:8px;}
+.hero-sub{font-size:14px;color:var(--muted);max-width:680px;line-height:1.6;}
+
+/* Phase tabs */
+.phase-tabs{display:flex;gap:0;margin-bottom:28px;border:1px solid var(--border2);border-radius:8px;overflow:hidden;}
+.phase-tab{flex:1;padding:12px 0;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;color:var(--muted);cursor:pointer;background:transparent;border:none;border-right:1px solid var(--border2);transition:all 0.15s;}
+.phase-tab:last-child{border-right:none;}
+.phase-tab.active{background:var(--panel);color:var(--accent);}
+
+/* Site comparison header */
+.compare-header{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.site-badge{border-radius:8px;padding:16px 20px;border:1px solid var(--border2);}
+.site-badge.tharsis{background:rgba(232,112,64,0.06);border-color:rgba(232,112,64,0.3);}
+.site-badge.nili{background:rgba(255,68,34,0.06);border-color:rgba(255,68,34,0.3);}
+.sb-name{font-size:16px;font-weight:500;color:#fff;margin-bottom:4px;}
+.sb-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px;}
+.sb-tags{display:flex;flex-wrap:wrap;gap:5px;}
+.sb-tag{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--border2);color:var(--muted);}
+
+/* Phase content */
+.phase-content{display:none;}
+.phase-content.active{display:block;}
+
+/* Equipment grid */
+.equip-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.equip-col{}
+.col-header{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;margin-bottom:12px;padding:8px 12px;border-radius:6px;text-align:center;}
+.col-header.th{background:rgba(232,112,64,0.1);color:var(--th);border:1px solid rgba(232,112,64,0.25);}
+.col-header.ni{background:rgba(255,68,34,0.1);color:var(--ni);border:1px solid rgba(255,68,34,0.25);}
+
+.equip-item{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:13px;margin-bottom:10px;}
+.ei-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.ei-name{font-size:13px;font-weight:500;color:var(--text);}
+.ei-cost{font-family:var(--mono);font-size:13px;font-weight:500;}
+.ei-desc{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:6px;}
+.ei-specs{display:flex;flex-wrap:wrap;gap:4px;}
+.ei-spec{font-family:var(--mono);font-size:10px;padding:2px 7px;background:var(--dim);border-radius:3px;color:var(--muted);}
+
+/* Cost summary */
+.cost-summary{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:24px;}
+.cs-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.08em;margin-bottom:16px;}
+.cs-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.cs-row:last-child{margin-bottom:0;border-top:1px solid var(--border);padding-top:10px;}
+.cs-label{font-size:12px;color:var(--text);width:180px;flex-shrink:0;}
+.cs-bar-wrap{flex:1;display:flex;gap:6px;align-items:center;}
+.cs-bar{height:6px;border-radius:3px;min-width:4px;transition:width 0.4s ease;}
+.cs-bar.th{background:var(--th);}
+.cs-bar.ni{background:var(--ni);}
+.cs-val{font-family:var(--mono);font-size:11px;width:70px;text-align:right;}
+.cs-val.th{color:var(--th);}
+.cs-val.ni{color:var(--ni);}
+
+/* Chart card */
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px;}
+.chart-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.07em;margin-bottom:12px;}
+.chart-wrap{height:260px;position:relative;}
+
+/* Timeline */
+.timeline-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px;}
+.tl-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.07em;margin-bottom:16px;}
+.tl-row{display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;align-items:center;margin-bottom:10px;}
+.tl-row:last-child{margin-bottom:0;}
+.tl-label{font-size:11px;color:var(--muted);}
+.tl-bar-wrap{height:22px;background:var(--dim);border-radius:4px;overflow:hidden;position:relative;}
+.tl-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-family:var(--mono);font-size:9px;white-space:nowrap;overflow:hidden;}
+.tl-bar.th{background:rgba(232,112,64,0.3);color:var(--th);border:1px solid rgba(232,112,64,0.4);}
+.tl-bar.ni{background:rgba(255,68,34,0.3);color:var(--ni);border:1px solid rgba(255,68,34,0.4);}
+
+/* Decision box */
+.decision{background:rgba(61,191,160,0.05);border:1px solid rgba(61,191,160,0.2);border-radius:7px;padding:14px 18px;margin-bottom:20px;}
+.decision-label{font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:0.08em;margin-bottom:6px;}
+.decision-body{font-size:12px;color:#8aaa90;line-height:1.7;}
+.decision-body strong{color:#b0d0b8;font-weight:500;}
+
+/* ISRU yield */
+.isru-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px;}
+.isru-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.07em;margin-bottom:14px;}
+.isru-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.isru-item{background:var(--dim);border-radius:6px;padding:12px;}
+.isru-site{font-family:var(--mono);font-size:10px;margin-bottom:8px;}
+.isru-site.th{color:var(--th);}
+.isru-site.ni{color:var(--ni);}
+.isru-metric{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.isru-metric:last-child{margin-bottom:0;}
+.isru-key{font-size:11px;color:var(--muted);}
+.isru-val{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text);}
+
+/* Recommendation */
+.rec-card{background:rgba(74,159,212,0.06);border:1px solid rgba(74,159,212,0.2);border-radius:8px;padding:16px;margin-bottom:24px;}
+.rec-title{font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:0.07em;margin-bottom:10px;}
+.rec-body{font-size:12px;color:#8099B0;line-height:1.7;}
+.rec-body strong{color:var(--text);font-weight:500;}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-logo">◈ MARS-HSE <span>/ MODULE 04</span></div>
+  <div class="nav-links">
+    <a class="nav-link" href="01-site-map.html">← SITE MAP</a>
+    <a class="nav-link" href="03-methane-depth.html">← MODULE 03</a>
+    <a class="nav-link" href="05-hazard.html">MODULE 05 →</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="hero">
+    <div class="hero-tag">◈ ROBOTIC PRECURSOR MISSION · INFRASTRUCTURE PLANNER</div>
+    <h1 class="hero-title">Mission infrastructure & cost model</h1>
+    <p class="hero-sub">Side-by-side equipment, cost, timeline, and ISRU yield comparison for robotic hydrocarbon exploration at Tharsis dome complex vs Nili Fossae trough. All costs in 2024 USD millions.</p>
+  </div>
+
+  <!-- Site badges -->
+  <div class="compare-header">
+    <div class="site-badge tharsis">
+      <div class="sb-name">Tharsis dome complex</div>
+      <div class="sb-sub">RANK #1 · STRUCTURAL · 0°N 95°W</div>
+      <div class="sb-tags">
+        <span class="sb-tag" style="color:var(--th);border-color:rgba(232,112,64,0.3)">Score 82/100</span>
+        <span class="sb-tag">Shallow: 4–8 km</span>
+        <span class="sb-tag">Deep: 20–26 km</span>
+        <span class="sb-tag">Risk: MEDIUM</span>
+      </div>
+    </div>
+    <div class="site-badge nili">
+      <div class="sb-name">Nili Fossae trough</div>
+      <div class="sb-sub">RANK #2 · EVIDENCE-BASED · 21°N 74°E</div>
+      <div class="sb-tags">
+        <span class="sb-tag" style="color:var(--ni);border-color:rgba(255,68,34,0.3)">Score 79/100</span>
+        <span class="sb-tag">Shallow: 2–5 km</span>
+        <span class="sb-tag">Serpentinite confirmed</span>
+        <span class="sb-tag">Risk: LOW</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase tabs -->
+  <div class="phase-tabs">
+    <button class="phase-tab active" onclick="setPhase(0)">PHASE 1 · SURVEY</button>
+    <button class="phase-tab" onclick="setPhase(1)">PHASE 2 · DRILLING</button>
+    <button class="phase-tab" onclick="setPhase(2)">PHASE 3 · PROCESSING</button>
+    <button class="phase-tab" onclick="setPhase(3)">TOTAL MISSION</button>
+  </div>
+
+  <!-- PHASE 1: SURVEY -->
+  <div class="phase-content active" id="phase-0">
+    <div class="equip-grid">
+      <div class="equip-col">
+        <div class="col-header th">THARSIS · SURVEY EQUIPMENT</div>
+
+        <div class="equip-item">
+          <div class="ei-header">
+            <div class="ei-name">Seismic survey array</div>
+            <div class="ei-cost" style="color:var(--th)">$180M</div>
+          </div>
+          <div class="ei-desc">Distributed geophone network (48 nodes) to map subsurface structure to 30 km depth. Critical for imaging the dome trap geometry and cap rock thickness before committing to drilling.</div>
+          <div class="ei-specs">
+            <span class="ei-spec">48 nodes</span><span class="ei-spec">30 km depth</span><span class="ei-spec">RTG-powered</span><span class="ei-spec">18 month survey</span>
+          </div>
+        </div>
+
+        <div class="equip-item">
+          <div class="ei-header">
+            <div class="ei-name">Ground-penetrating radar rover</div>
+            <div class="ei-cost" style="color:var(--th)">$320M</div>
+          </div>
+          <div class="ei-desc">Long-range rover with 5 km depth GPR for mapping the cryosphere base and shallow trap geometry across the 200 km² Tharsis survey area.</div>
+          <div class="ei-specs">
+            <span class="ei-spec">5 km depth GPR</span><span class="ei-spec">200 km² coverage</span><span class="ei-spec">Solar + RTG</span>
+          </div>
+        </div>
+
+        <div class="equip-item">
+          <div class="ei-header">
+            <div class="ei-name">Atmospheric CH₄ sniffer</div>
+            <div class="ei-cost" style="color:var(--th)">$95M</div>
+          </div>
+          <div class="ei-desc">Fixed station mass spectrometer network to detect and triangulate methane plumes above the dome. Confirms active gas migration before drilling investment.</div>
+          <div class="ei-specs">
+            <span class="ei-spec">ppb sensitivity</span><span class="ei-spec">5 stations</span><span class="ei-spec">2-year baseline</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="equip-col">
+        <div class="col-header ni">NILI FOSSAE · SURVEY EQUIPMENT</div>
+
+        <div class="equip-item">
+          <div class="ei-header">
+            <div class="ei-name">Seismic survey array (lighter)</div>
+            <div class="ei-cost" style="color:var(--ni)">$120M</div>
+          </div>
+          <div class="ei-desc">Smaller 24-node array — shallow serpentinite target (2–5 km) requires less penetration depth. Graben geometry is already well-constrained from surface observations.</div>
+          <div class="ei-specs">
+            <span class="ei-spec">24 nodes</span><span class="ei-spec">10 km depth</span><span class="ei-spec">Solar-powered</span><span class="ei-spec">12 month survey</span>
+          </div>
+        </div>
+
+        <div class="equip-item">
+          <div class="ei-header">
+            <div class="ei-name">CRISM follow-up spectrometer</div>
+            <div class="ei-cost" style="color:var(--ni)">$140M</div>
+          </div>
+          <div class="ei-desc">High-resolution surface spectrometer to map the full extent of the CRISM-detected serpentinite deposit and identify optimal drill pad locations within the graben.</div>
+          <div class="ei-specs">
+            <span class="ei-spec">2 m resolution</span><span class="ei-spec">544 bands</span><span class="ei-spec">50 km² mapping</span>
+          </div>
+        </div>
+
+        <div class="equip-item">
+          <div class="ei-header">
+            <div class="ei-name">Atmospheric CH₄ + H₂ sniffer</div>
+            <div class="ei-cost" style="color:var(--ni)">$110M</div>
+          </div>
+          <div class="ei-desc">Combined CH₄ and H₂ detector — unique to Nili Fossae. Active serpentinisation produces both gases simultaneously. H₂ detection confirms ongoing pathway activity.</div>
+          <div class="ei-specs">
+            <span class="ei-spec">CH₄ + H₂ dual mode</span><span class="ei-spec">ppb sensitivity</span><span class="ei-spec">3 stations</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cost-summary">
+      <div class="cs-title">PHASE 1 COST COMPARISON</div>
+      <div class="cs-row"><div class="cs-label">Seismic survey</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:60%"></div><div class="cs-val th">$180M</div><div class="cs-bar ni" style="width:40%"></div><div class="cs-val ni">$120M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Rover / spectrometer</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$320M</div><div class="cs-bar ni" style="width:44%"></div><div class="cs-val ni">$140M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Gas detection</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:86%"></div><div class="cs-val th">$95M</div><div class="cs-bar ni" style="width:100%"></div><div class="cs-val ni">$110M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Launch & transit</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$400M</div><div class="cs-bar ni" style="width:100%"></div><div class="cs-val ni">$400M</div></div></div>
+      <div class="cs-row"><div class="cs-label" style="font-weight:500;color:var(--text)">PHASE 1 TOTAL</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th" style="font-size:14px;font-weight:500">$995M</div><div class="cs-bar ni" style="width:78%"></div><div class="cs-val ni" style="font-size:14px;font-weight:500">$770M</div></div></div>
+    </div>
+
+    <div class="decision">
+      <div class="decision-label">◆ PHASE 1 RECOMMENDATION</div>
+      <div class="decision-body">Nili Fossae Phase 1 costs <strong>$225M less</strong> primarily because the shallow target reduces seismic survey requirements and the existing CRISM data already constrains the deposit location. <strong>Recommended: begin Phase 1 at Nili Fossae</strong> — if the H₂ + CH₄ sniffer confirms active outgassing, the case for drilling becomes extremely strong without needing the full Tharsis survey commitment.</div>
+    </div>
+  </div>
+
+  <!-- PHASE 2: DRILLING -->
+  <div class="phase-content" id="phase-1">
+    <div class="equip-grid">
+      <div class="equip-col">
+        <div class="col-header th">THARSIS · DRILLING EQUIPMENT</div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Autonomous rotary drill rig</div><div class="ei-cost" style="color:var(--th)">$1,200M</div></div>
+          <div class="ei-desc">Heavy-duty autonomous rig capable of 8 km depth for shallow wildcat. High-temp rated drill string (>300°C). Basalt formation requires diamond-impregnated PDC bits with frequent replacement.</div>
+          <div class="ei-specs"><span class="ei-spec">8 km rated</span><span class="ei-spec">&gt;300°C</span><span class="ei-spec">RTG powered 25 kW</span><span class="ei-spec">PDC bits</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Drill casing system</div><div class="ei-cost" style="color:var(--th)">$280M</div></div>
+          <div class="ei-desc">Steel casing program for 8 km wellbore. Tharsis basalt is competent but fractured — requires continuous casing to prevent borehole collapse and gas blowout in the cryosphere zone.</div>
+          <div class="ei-specs"><span class="ei-spec">8 km casing</span><span class="ei-spec">Blow-out preventer</span><span class="ei-spec">Autonomous setting</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Measurement-while-drilling (MWD)</div><div class="ei-cost" style="color:var(--th)">$160M</div></div>
+          <div class="ei-desc">Real-time formation logging while drilling — gamma ray, resistivity, pressure. Critical for identifying the cryosphere base and reservoir zone without pulling the drill string.</div>
+          <div class="ei-specs"><span class="ei-spec">GR + resistivity</span><span class="ei-spec">Real-time telemetry</span><span class="ei-spec">Mars DSN relay</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Wellhead + BOP stack</div><div class="ei-cost" style="color:var(--th)">$220M</div></div>
+          <div class="ei-desc">Supercritical CH₄-rated wellhead for dome pressures (120–280 MPa). Autonomous blowout prevention essential — no crew to intervene.</div>
+          <div class="ei-specs"><span class="ei-spec">280 MPa rated</span><span class="ei-spec">Supercritical CH₄</span><span class="ei-spec">Autonomous BOP</span></div>
+        </div>
+      </div>
+
+      <div class="equip-col">
+        <div class="col-header ni">NILI FOSSAE · DRILLING EQUIPMENT</div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Lightweight autonomous drill rig</div><div class="ei-cost" style="color:var(--ni)">$650M</div></div>
+          <div class="ei-desc">Medium-duty rig for 5 km shallow serpentinite target. Lower temperature rating (200°C sufficient). Significantly lighter mass-to-orbit budget vs Tharsis deep rig.</div>
+          <div class="ei-specs"><span class="ei-spec">5 km rated</span><span class="ei-spec">&gt;200°C</span><span class="ei-spec">Solar + RTG 15 kW</span><span class="ei-spec">Roller cone bits</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Drill casing system (lighter)</div><div class="ei-cost" style="color:var(--ni)">$140M</div></div>
+          <div class="ei-desc">5 km casing program. Graben sediments are less competent than Tharsis basalt — requires careful casing design through the fractured graben fill before reaching serpentinite.</div>
+          <div class="ei-specs"><span class="ei-spec">5 km casing</span><span class="ei-spec">Graben-adapted</span><span class="ei-spec">Blow-out preventer</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Measurement-while-drilling (MWD)</div><div class="ei-cost" style="color:var(--ni)">$160M</div></div>
+          <div class="ei-desc">Identical MWD package — real-time formation logging to identify the serpentinite zone onset and gas shows during drilling. Spectral mineralogy tool added for in-situ CRISM validation.</div>
+          <div class="ei-specs"><span class="ei-spec">GR + resistivity</span><span class="ei-spec">Spectral mineralogy</span><span class="ei-spec">Mars DSN relay</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Wellhead + BOP stack</div><div class="ei-cost" style="color:var(--ni)">$130M</div></div>
+          <div class="ei-desc">Lower pressure rated wellhead (60–180 MPa) for shallow Nili Fossae target. Still requires autonomous BOP — any well on Mars is a blowout risk without crew.</div>
+          <div class="ei-specs"><span class="ei-spec">180 MPa rated</span><span class="ei-spec">Gas + H₂ rated</span><span class="ei-spec">Autonomous BOP</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cost-summary">
+      <div class="cs-title">PHASE 2 COST COMPARISON</div>
+      <div class="cs-row"><div class="cs-label">Drill rig</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$1,200M</div><div class="cs-bar ni" style="width:54%"></div><div class="cs-val ni">$650M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Casing program</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$280M</div><div class="cs-bar ni" style="width:50%"></div><div class="cs-val ni">$140M</div></div></div>
+      <div class="cs-row"><div class="cs-label">MWD logging</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$160M</div><div class="cs-bar ni" style="width:100%"></div><div class="cs-val ni">$160M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Wellhead + BOP</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$220M</div><div class="cs-bar ni" style="width:59%"></div><div class="cs-val ni">$130M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Launch & transit</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$800M</div><div class="cs-bar ni" style="width:63%"></div><div class="cs-val ni">$500M</div></div></div>
+      <div class="cs-row"><div class="cs-label" style="font-weight:500;color:var(--text)">PHASE 2 TOTAL</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th" style="font-size:14px;font-weight:500">$2,660M</div><div class="cs-bar ni" style="width:59%"></div><div class="cs-val ni" style="font-size:14px;font-weight:500">$1,580M</div></div></div>
+    </div>
+
+    <div class="decision">
+      <div class="decision-label">◆ PHASE 2 KEY INSIGHT</div>
+      <div class="decision-body">The <strong>$1,080M drilling cost difference</strong> between sites is almost entirely driven by depth. Tharsis's 8 km shallow wildcat requires a rig nearly twice the mass of Nili Fossae's 5 km rig — and mass-to-Mars is the dominant cost driver. <strong>Nili Fossae's shallow serpentinite target is the most cost-efficient first drill on Mars.</strong></div>
+    </div>
+  </div>
+
+  <!-- PHASE 3: PROCESSING -->
+  <div class="phase-content" id="phase-2">
+    <div class="equip-grid">
+      <div class="equip-col">
+        <div class="col-header th">THARSIS · PROCESSING EQUIPMENT</div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Supercritical CH₄ separator</div><div class="ei-cost" style="color:var(--th)">$380M</div></div>
+          <div class="ei-desc">High-pressure separator for supercritical methane (120–280 MPa wellhead). Must reduce pressure and temperature in stages to prevent hydrate formation. No Earth equivalent at this scale — novel engineering.</div>
+          <div class="ei-specs"><span class="ei-spec">280 MPa inlet</span><span class="ei-spec">Stage reduction</span><span class="ei-spec">Hydrate prevention</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Propellant liquefaction unit</div><div class="ei-cost" style="color:var(--th)">$290M</div></div>
+          <div class="ei-desc">Cryogenic liquefaction to convert gaseous CH₄ to liquid methane propellant (LCH₄) for Mars ascent vehicles. Requires continuous RTG power and active thermal management.</div>
+          <div class="ei-specs"><span class="ei-spec">LCH₄ output</span><span class="ei-spec">Cryogenic storage</span><span class="ei-spec">RTG powered</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">LOX production (Sabatier)</div><div class="ei-cost" style="color:var(--th)">$210M</div></div>
+          <div class="ei-desc">Sabatier reactor + electrolysis to produce liquid oxygen from CO₂ + H₂O. Combines with LCH₄ for complete ISRU propellant production. Water sourced from cryosphere melting during drilling.</div>
+          <div class="ei-specs"><span class="ei-spec">Sabatier + MOXIE</span><span class="ei-spec">H₂O recovery</span><span class="ei-spec">LOX output</span></div>
+        </div>
+      </div>
+
+      <div class="equip-col">
+        <div class="col-header ni">NILI FOSSAE · PROCESSING EQUIPMENT</div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Low-pressure gas separator</div><div class="ei-cost" style="color:var(--ni)">$180M</div></div>
+          <div class="ei-desc">Standard pressure separator for shallow Nili Fossae wellhead (60–180 MPa). Also separates H₂ from CH₄ — the H₂ co-product from serpentinisation is itself valuable as fuel or chemical feedstock.</div>
+          <div class="ei-specs"><span class="ei-spec">180 MPa inlet</span><span class="ei-spec">CH₄ + H₂ separation</span><span class="ei-spec">H₂ storage</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">Propellant liquefaction unit</div><div class="ei-cost" style="color:var(--ni)">$290M</div></div>
+          <div class="ei-desc">Identical liquefaction package — LCH₄ output for ascent vehicles. Same cost as Tharsis unit since cryogenic requirements are the same regardless of wellhead pressure.</div>
+          <div class="ei-specs"><span class="ei-spec">LCH₄ output</span><span class="ei-spec">Cryogenic storage</span><span class="ei-spec">RTG powered</span></div>
+        </div>
+        <div class="equip-item">
+          <div class="ei-header"><div class="ei-name">LOX production (Sabatier)</div><div class="ei-cost" style="color:var(--ni)">$180M</div></div>
+          <div class="ei-desc">Slightly cheaper Sabatier unit — H₂ co-product from serpentinisation bypasses some electrolysis steps, reducing power requirements. Water from the graben hydrosphere (ancient ice detected by MARSIS).</div>
+          <div class="ei-specs"><span class="ei-spec">H₂ bypass mode</span><span class="ei-spec">Lower power req.</span><span class="ei-spec">LOX output</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="isru-card">
+      <div class="isru-title">ISRU PROPELLANT YIELD ESTIMATE · PER MARTIAN YEAR</div>
+      <div class="isru-grid">
+        <div class="isru-item">
+          <div class="isru-site th">THARSIS DOME</div>
+          <div class="isru-metric"><span class="isru-key">CH₄ yield (optimistic)</span><span class="isru-val">12–18 t/yr</span></div>
+          <div class="isru-metric"><span class="isru-key">LOX yield</span><span class="isru-val">48–72 t/yr</span></div>
+          <div class="isru-metric"><span class="isru-key">Propellant mass ratio</span><span class="isru-val">1:4 (CH₄:LOX)</span></div>
+          <div class="isru-metric"><span class="isru-key">MAV fuels per year</span><span class="isru-val">3–5 MAVs</span></div>
+          <div class="isru-metric"><span class="isru-key">Confidence</span><span class="isru-val" style="color:var(--amber)">MODERATE</span></div>
+        </div>
+        <div class="isru-item">
+          <div class="isru-site ni">NILI FOSSAE</div>
+          <div class="isru-metric"><span class="isru-key">CH₄ yield (optimistic)</span><span class="isru-val">6–10 t/yr</span></div>
+          <div class="isru-metric"><span class="isru-key">H₂ co-yield</span><span class="isru-val">2–4 t/yr</span></div>
+          <div class="isru-metric"><span class="isru-key">LOX yield</span><span class="isru-val">24–40 t/yr</span></div>
+          <div class="isru-metric"><span class="isru-key">MAV fuels per year</span><span class="isru-val">1–3 MAVs</span></div>
+          <div class="isru-metric"><span class="isru-key">Confidence</span><span class="isru-val" style="color:var(--teal)">HIGH</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cost-summary">
+      <div class="cs-title">PHASE 3 COST COMPARISON</div>
+      <div class="cs-row"><div class="cs-label">Separator</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$380M</div><div class="cs-bar ni" style="width:47%"></div><div class="cs-val ni">$180M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Liquefaction unit</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$290M</div><div class="cs-bar ni" style="width:100%"></div><div class="cs-val ni">$290M</div></div></div>
+      <div class="cs-row"><div class="cs-label">LOX production</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$210M</div><div class="cs-bar ni" style="width:86%"></div><div class="cs-val ni">$180M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Launch & transit</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$600M</div><div class="cs-bar ni" style="width:67%"></div><div class="cs-val ni">$400M</div></div></div>
+      <div class="cs-row"><div class="cs-label" style="font-weight:500;color:var(--text)">PHASE 3 TOTAL</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th" style="font-size:14px;font-weight:500">$1,480M</div><div class="cs-bar ni" style="width:71%"></div><div class="cs-val ni" style="font-size:14px;font-weight:500">$1,050M</div></div></div>
+    </div>
+  </div>
+
+  <!-- TOTAL MISSION -->
+  <div class="phase-content" id="phase-3">
+    <div class="chart-card">
+      <div class="chart-title">TOTAL MISSION COST BREAKDOWN · USD MILLIONS</div>
+      <div class="chart-wrap"><canvas id="cost-chart"></canvas></div>
+    </div>
+
+    <div class="cost-summary">
+      <div class="cs-title">FULL MISSION COST SUMMARY</div>
+      <div class="cs-row"><div class="cs-label">Phase 1 · Survey</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$995M</div><div class="cs-bar ni" style="width:77%"></div><div class="cs-val ni">$770M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Phase 2 · Drilling</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$2,660M</div><div class="cs-bar ni" style="width:59%"></div><div class="cs-val ni">$1,580M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Phase 3 · Processing</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$1,480M</div><div class="cs-bar ni" style="width:71%"></div><div class="cs-val ni">$1,050M</div></div></div>
+      <div class="cs-row"><div class="cs-label">Contingency (20%)</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th">$1,027M</div><div class="cs-bar ni" style="width:68%"></div><div class="cs-val ni">$680M</div></div></div>
+      <div class="cs-row"><div class="cs-label" style="font-weight:500;color:var(--text)">TOTAL MISSION</div><div class="cs-bar-wrap"><div class="cs-bar th" style="width:100%"></div><div class="cs-val th" style="font-size:16px;font-weight:600;color:var(--th)">$6,162M</div><div class="cs-bar ni" style="width:66%"></div><div class="cs-val ni" style="font-size:16px;font-weight:600;color:var(--ni)">$4,080M</div></div></div>
+    </div>
+
+    <div class="timeline-card">
+      <div class="tl-title">MISSION TIMELINE · EARTH YEARS FROM PROGRAMME START</div>
+      <div class="tl-row" style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px">
+        <div></div><div style="padding-left:4px">THARSIS</div><div style="padding-left:4px">NILI FOSSAE</div>
+      </div>
+      <div class="tl-row"><div class="tl-label">Design & build</div><div class="tl-bar-wrap"><div class="tl-bar th" style="width:40%">Yrs 0–4</div></div><div class="tl-bar-wrap"><div class="tl-bar ni" style="width:30%">Yrs 0–3</div></div></div>
+      <div class="tl-row"><div class="tl-label">Transit to Mars</div><div class="tl-bar-wrap"><div class="tl-bar th" style="width:8%;margin-left:40%">Yr 4.7</div></div><div class="tl-bar-wrap"><div class="tl-bar ni" style="width:8%;margin-left:30%">Yr 3.7</div></div></div>
+      <div class="tl-row"><div class="tl-label">Phase 1 survey</div><div class="tl-bar-wrap"><div class="tl-bar th" style="width:20%;margin-left:48%">Yrs 5–7</div></div><div class="tl-bar-wrap"><div class="tl-bar ni" style="width:13%;margin-left:38%">Yrs 4–5.2</div></div></div>
+      <div class="tl-row"><div class="tl-label">Phase 2 drilling</div><div class="tl-bar-wrap"><div class="tl-bar th" style="width:20%;margin-left:68%">Yrs 7–9</div></div><div class="tl-bar-wrap"><div class="tl-bar ni" style="width:15%;margin-left:51%">Yrs 5.2–6.7</div></div></div>
+      <div class="tl-row"><div class="tl-label">Phase 3 processing</div><div class="tl-bar-wrap"><div class="tl-bar th" style="width:10%;margin-left:88%">Yrs 9–10</div></div><div class="tl-bar-wrap"><div class="tl-bar ni" style="width:13%;margin-left:66%">Yrs 6.7–8</div></div></div>
+      <div class="tl-row"><div class="tl-label" style="color:var(--teal);font-weight:500">First propellant</div><div class="tl-bar-wrap"><div class="tl-bar th" style="width:5%;margin-left:95%;background:rgba(232,112,64,0.5)">Yr 10</div></div><div class="tl-bar-wrap"><div class="tl-bar ni" style="width:5%;margin-left:77%;background:rgba(255,68,34,0.5)">Yr 8</div></div></div>
+    </div>
+
+    <div class="rec-card">
+      <div class="rec-title">MISSION RECOMMENDATION</div>
+      <div class="rec-body">
+        <strong>Nili Fossae is the recommended Phase 1 target</strong> — $2.08B cheaper than Tharsis, produces first propellant 2 years earlier, and carries significantly lower technical risk due to its shallow drilling depth and CRISM-confirmed serpentinite evidence base.<br><br>
+        <strong>Tharsis as Phase 2 target</strong> — the larger dome trap geometry makes it the higher-yield long-term prospect. Once Nili Fossae validates the abiogenic methane hypothesis and proves ISRU viability, Tharsis becomes the logical scale-up target with the added benefit of lessons learned from the first mission.<br><br>
+        <strong>Combined programme total: ~$10.2B</strong> over 15 years — comparable to a single flagship NASA planetary science mission, with the potential to permanently resolve Mars ISRU propellant supply for all future crewed missions.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setPhase(n) {
+  document.querySelectorAll('.phase-tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.phase-content').forEach((c,i) => c.classList.toggle('active', i===n));
+  if(n===3 && !window._chartDone) initChart();
+}
+
+function initChart() {
+  window._chartDone = true;
+  const ctx = document.getElementById('cost-chart');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Phase 1\nSurvey', 'Phase 2\nDrilling', 'Phase 3\nProcessing', 'Contingency'],
+      datasets: [
+        { label: 'Tharsis', data: [995, 2660, 1480, 1027], backgroundColor: 'rgba(232,112,64,0.7)', borderColor: '#E87040', borderWidth: 1, borderRadius: 4 },
+        { label: 'Nili Fossae', data: [770, 1580, 1050, 680], backgroundColor: 'rgba(255,68,34,0.5)', borderColor: '#FF4422', borderWidth: 1, borderRadius: 4 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#C8D4E4', font: { family: 'IBM Plex Mono', size: 11 } } },
+        tooltip: { backgroundColor: '#111520', titleColor: '#C8D4E4', bodyColor: '#556070', borderColor: '#263347', borderWidth: 1,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}M` }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#1E2535' }, ticks: { color: '#556070', font: { family: 'IBM Plex Mono', size: 10 } } },
+        y: { grid: { color: '#1E2535' }, ticks: { color: '#556070', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => '$'+v+'M' } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
