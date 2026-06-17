@@ -125,7 +125,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <div class="mlb-title">THARSIS DOME COMPLEX · 0°N 95°W</div>
           <div class="mlb-sub">RANK #1 · SCORE 82/100 · STRUCTURAL TRAP</div>
         </div>
-        <div id="map-th" class="map-el"></div>
+        <div id="map-th" style="height:520px;width:100%"></div>
         <div class="map-cap">Click any infrastructure marker for specifications. Toggle overlays using the layer control. Hover geologic features for descriptions.</div>
       </div>
 
@@ -275,7 +275,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <div class="mlb-title">NILI FOSSAE TROUGH · 21°N 74°E</div>
           <div class="mlb-sub">RANK #2 · SCORE 79/100 · EVIDENCE-BASED · PRIMARY PHASE 1 TARGET</div>
         </div>
-        <div id="map-ni" class="map-el"></div>
+        <div id="map-ni" style="height:520px;width:100%"></div>
         <div class="map-cap">CRISM-confirmed serpentinite (red) and carbonate (orange) deposits overlaid on MOLA terrain. Click infrastructure markers for specifications.</div>
       </div>
 
@@ -459,7 +459,7 @@ function tip(html){return `<div class="m-tip">${html}</div>`}
 // ── Tharsis map ─────────────────────────────────────────────────────────────
 const mapTH = L.map('map-th',{
   center:[2,-105], zoom:5, minZoom:4, maxZoom:8,
-  crs:L.CRS.EPSG4326, maxBounds:[[-20,-160],[30,-60]], maxBoundsViscosity:1, zoomControl:false
+  maxBounds:[[-20,-160],[30,-60]], maxBoundsViscosity:1, zoomControl:false
 });
 L.control.zoom({position:'bottomright'}).addTo(mapTH);
 addDem(mapTH);
@@ -528,7 +528,7 @@ mapTH.on('mousemove',e=>{
 // ── Nili Fossae map ──────────────────────────────────────────────────────────
 const mapNI = L.map('map-ni',{
   center:[21,74], zoom:6, minZoom:4, maxZoom:9,
-  crs:L.CRS.EPSG4326, maxBounds:[[10,60],[35,95]], maxBoundsViscosity:1, zoomControl:false
+  maxBounds:[[10,60],[35,95]], maxBoundsViscosity:1, zoomControl:false
 });
 L.control.zoom({position:'bottomright'}).addTo(mapNI);
 addDem(mapNI);
@@ -601,8 +601,10 @@ function setSite(s){
   document.getElementById('tab-th').className='site-tab'+(s==='th'?' active-th':'');
   document.getElementById('tab-ni').className='site-tab'+(s==='ni'?' active-ni':'');
   // Invalidate map size when shown
-  setTimeout(()=>{ if(s==='th') mapTH.invalidateSize(); else mapNI.invalidateSize(); },50);
+  setTimeout(()=>{ mapTH.invalidateSize(); mapNI.invalidateSize(); },100);
 }
+// Force map renders on load
+setTimeout(()=>{ mapTH.invalidateSize(); mapNI.invalidateSize(); }, 200);
 </script>
 </body>
 </html>
