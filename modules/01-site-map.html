@@ -277,6 +277,7 @@ let trekTileLoaded = false;
 function initMap() {
   const map = L.map('map',{
     center:[0,0], zoom:2, minZoom:1, maxZoom:6,
+    crs: L.CRS.EPSG4326,
     maxBounds:[[-90,-180],[90,180]], maxBoundsViscosity:1.0,
   });
 
