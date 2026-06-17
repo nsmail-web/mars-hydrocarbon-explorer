@@ -284,7 +284,7 @@ function initMap() {
   // Primary: NASA Trek WMTS — MOLA greyscale shaded relief (clean, no colour noise)
   const molaColorLayer = L.tileLayer(
     '../tiles/dem/{z}/{x}/{y}.png',
-    { tms:true, attribution:'NASA/USGS MOLA', errorTileUrl:'', opacity:1.0, minZoom:0, maxZoom:5 }
+    { tms:false, attribution:'NASA/USGS MOLA', errorTileUrl:'', opacity:1.0, minZoom:0, maxZoom:5 }
   );
 
   // Canvas fallback — greyscale DEM with a subtle rust tint so it reads as Mars
